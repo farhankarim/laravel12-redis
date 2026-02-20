@@ -5,6 +5,7 @@ namespace App\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class InsertUsersChunkJob implements ShouldQueue
 {
@@ -25,23 +26,74 @@ class InsertUsersChunkJob implements ShouldQueue
 
     public function handle(): void
     {
+        $table = 'users';
+        $hasName = Schema::hasColumn($table, 'name');
+        $hasFirstName = Schema::hasColumn($table, 'first_name');
+        $hasLastName = Schema::hasColumn($table, 'last_name');
+        $hasEmail = Schema::hasColumn($table, 'email');
+        $hasEmailAddress = Schema::hasColumn($table, 'email_address');
+        $hasEmailVerifiedAt = Schema::hasColumn($table, 'email_verified_at');
+        $hasPassword = Schema::hasColumn($table, 'password');
+        $hasRememberToken = Schema::hasColumn($table, 'remember_token');
+        $hasCreatedAt = Schema::hasColumn($table, 'created_at');
+        $hasUpdatedAt = Schema::hasColumn($table, 'updated_at');
+
         $timestamp = now();
         $rows = [];
 
         for ($offset = 0; $offset < $this->chunkSize; $offset++) {
             $index = $this->startIndex + $offset;
+            $email = "queued-{$this->runId}-{$index}@example.test";
 
-            $rows[] = [
-                'name' => "Queued User {$index}",
-                'email' => "queued-{$this->runId}-{$index}@example.test",
-                'email_verified_at' => $timestamp,
-                'password' => $this->passwordHash,
-                'remember_token' => null,
-                'created_at' => $timestamp,
-                'updated_at' => $timestamp,
-            ];
+            $row = [];
+
+            if ($hasName) {
+                $row['name'] = "Queued User {$index}";
+            }
+
+            if ($hasFirstName) {
+                $row['first_name'] = 'Queued';
+            }
+
+            if ($hasLastName) {
+                $row['last_name'] = "User {$index}";
+            }
+
+            if ($hasEmail) {
+                $row['email'] = $email;
+            }
+
+            if ($hasEmailAddress) {
+                $row['email_address'] = $email;
+            }
+
+            if ($hasEmailVerifiedAt) {
+                $row['email_verified_at'] = $timestamp;
+            }
+
+            if ($hasPassword) {
+                $row['password'] = $this->passwordHash;
+            }
+
+            if ($hasRememberToken) {
+                $row['remember_token'] = null;
+            }
+
+            if ($hasCreatedAt) {
+                $row['created_at'] = $timestamp;
+            }
+
+            if ($hasUpdatedAt) {
+                $row['updated_at'] = $timestamp;
+            }
+
+            if (! empty($row)) {
+                $rows[] = $row;
+            }
         }
 
-        DB::table('users')->insert($rows);
+        if (! empty($rows)) {
+            DB::table($table)->insert($rows);
+        }
     }
 }

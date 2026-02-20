@@ -43,6 +43,77 @@ Optional overrides:
 TOTAL_USERS=1000000 CHUNK_SIZE=1000 WORKERS=6 QUEUE_NAME=user-imports QUEUE_CONNECTION=redis ./scripts/generate-million-users.sh
 ```
 
+## Livewire Redis dashboards
+
+Livewire is installed and two dashboards are available:
+
+- Queue summary: `/dashboard/queue`
+- Users summary: `/dashboard/users`
+
+The dashboards read/write cached summary snapshots using Redis keys:
+
+- `dashboard:queue_summary`
+- `dashboard:users_summary`
+
+Pub/Sub channels:
+
+- Refresh requests: `dashboard.summary.refresh`
+- Update notifications: `dashboard.summary.updated`
+
+Run the Redis pub/sub listener so refresh messages trigger summary rebuilds:
+
+```bash
+php artisan dashboard:redis-listen
+```
+
+Step-by-step implementation guide:
+
+- [Livewire + Redis dashboard tutorial](docs/livewire-redis-dashboard-step-by-step.md)
+
+## Chequebook import (Laravel + Redis batch)
+
+Legacy chequebook insertion from `public/uploader.php` is now available in Laravel and dispatches Redis queue jobs in batches.
+
+1. Run migrations (includes `job_batches` table for batch tracking):
+
+```bash
+php artisan migrate
+```
+
+2. Start a Redis queue worker for the chequebook queue:
+
+```bash
+php artisan queue:work redis --queue=chequebook-imports
+```
+
+3. Dispatch import batch:
+
+```bash
+curl -X POST http://127.0.0.1:8000/chequebook/import \
+	-H "Accept: application/json" \
+	-H "Content-Type: application/json" \
+	-d '{"company_prefix":"qr","batch_size":500}'
+```
+
+4. Check batch status:
+
+```bash
+curl -H "Accept: application/json" http://127.0.0.1:8000/chequebook/import/{batch_id}
+```
+
+CLI alternative (no HTTP):
+
+```bash
+php artisan chequebook:import --company-prefix=qr --batch-size=500 --queue=chequebook-imports
+```
+
+Environment variables:
+
+- `CHEQUEBOOK_COMPANY_PREFIX` (default: `qr`)
+- `CHEQUEBOOK_BATCH_SIZE` (default: `500`)
+- `CHEQUEBOOK_QUEUE` (default: `chequebook-imports`)
+- `CHEQUEBOOK_AES_KEY` (required for QR encryption compatibility)
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
