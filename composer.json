@@ -9,6 +9,7 @@
         "php": "^8.2",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "livewire/livewire": "^4.1",
         "predis/predis": "^2.3"
     },
     "require-dev": {
@@ -44,6 +45,14 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+        ],
+        "dev:dashboard": [
+            "Composer\\Config::disableProcessTimeout",
+            "rm -f public/hot",
+            "(sudo service redis-server start || service redis-server start || true)",
+            "(sudo service mariadb start || service mariadb start || true)",
+            "lsof -tiTCP:8000 -sTCP:LISTEN | xargs -r kill -9",
+            "npx concurrently -c \"#93c5fd,#fdba74\" \"XDEBUG_MODE=off php artisan serve --host=0.0.0.0 --port=8000\" \"XDEBUG_MODE=off php artisan dashboard:redis-listen\" --names=server,redis-listener --kill-others-on-fail"
         ],
         "test": [
             "@php artisan config:clear --ansi",

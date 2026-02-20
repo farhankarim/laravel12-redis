@@ -43,6 +43,33 @@ Optional overrides:
 TOTAL_USERS=1000000 CHUNK_SIZE=1000 WORKERS=6 QUEUE_NAME=user-imports QUEUE_CONNECTION=redis ./scripts/generate-million-users.sh
 ```
 
+## Livewire Redis dashboards
+
+Livewire is installed and two dashboards are available:
+
+- Queue summary: `/dashboard/queue`
+- Users summary: `/dashboard/users`
+
+The dashboards read/write cached summary snapshots using Redis keys:
+
+- `dashboard:queue_summary`
+- `dashboard:users_summary`
+
+Pub/Sub channels:
+
+- Refresh requests: `dashboard.summary.refresh`
+- Update notifications: `dashboard.summary.updated`
+
+Run the Redis pub/sub listener so refresh messages trigger summary rebuilds:
+
+```bash
+php artisan dashboard:redis-listen
+```
+
+Step-by-step implementation guide:
+
+- [Livewire + Redis dashboard tutorial](docs/livewire-redis-dashboard-step-by-step.md)
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
