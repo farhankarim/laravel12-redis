@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+# Block sensitive / private artifacts on any branch.
+blocked_global='(^|/)(qrcode.*\.sql|dump\.rdb)$'
+staged_files="$(git diff --cached --name-only)"
+
+if [[ -n "${staged_files}" ]] && echo "${staged_files}" | grep -Eiq "${blocked_global}"; then
+  echo "✖ Commit blocked: staged files include sensitive dump artifacts (e.g. *.sql or dump.rdb)."
+  exit 1
+fi
+
+# Chequebook/private code should only live on the private branch.
+if [[ "${branch}" != "chequebook-private" ]]; then
+  blocked_private='(^|/)(app/Http/Controllers/ChequebookImportController\.php|app/Jobs/ProcessChequebookChunkJob\.php|app/Services/ChequebookImport.*\.php|config/chequebook\.php|docs/redis-laravel-chequebook-tutorial\.md|.*[Cc]hequebook.*|.*cheque_book.*)$'
+
+  if [[ -n "${staged_files}" ]] && echo "${staged_files}" | grep -Eiq "${blocked_private}"; then
+    echo "✖ Commit blocked: chequebook/private files are staged on branch '${branch}'."
+    echo "  Move these changes to 'chequebook-private' instead."
+    exit 1
+  fi
+fi
