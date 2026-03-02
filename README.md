@@ -43,6 +43,41 @@ Optional overrides:
 TOTAL_USERS=1000000 CHUNK_SIZE=1000 WORKERS=6 QUEUE_NAME=user-imports QUEUE_CONNECTION=redis ./scripts/generate-million-users.sh
 ```
 
+## Email verification batch + free mail testing
+
+Recommended free mail testing service: **Mailtrap Email Testing** (free tier available).
+
+Set these env values (from Mailtrap SMTP credentials) in `.env`:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=your_mailtrap_username
+MAIL_PASSWORD=your_mailtrap_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+Dispatch a queued batch for verification emails (for generated users):
+
+```bash
+php artisan users:queue-email-verifications --connection=redis --queue=email-verifications --id-column=user_id --email-column=email_address
+```
+
+Or run the helper script with parallel workers:
+
+```bash
+WORKERS=6 ID_COLUMN=user_id EMAIL_COLUMN=email_address ./scripts/queue-email-verifications.sh
+```
+
+Safe dry run on a small sample:
+
+```bash
+php artisan users:queue-email-verifications --connection=redis --queue=email-verifications --id-column=user_id --email-column=email_address --limit=20
+```
+
 ## Livewire Redis dashboards
 
 Livewire is installed and two dashboards are available:
