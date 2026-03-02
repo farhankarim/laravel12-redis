@@ -2,6 +2,11 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 
+const isCodespaces = Boolean(process.env.CODESPACE_NAME && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN);
+const codespacesHost = isCodespaces
+    ? `${process.env.CODESPACE_NAME}-5173.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
+    : null;
+
 export default defineConfig({
     plugins: [
         laravel({
@@ -14,11 +19,12 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
-        origin: 'http://127.0.0.1:5173',
+        origin: isCodespaces ? `https://${codespacesHost}` : 'http://127.0.0.1:5173',
         hmr: {
-            host: '127.0.0.1',
-            protocol: 'ws',
+            host: isCodespaces ? codespacesHost : '127.0.0.1',
+            protocol: isCodespaces ? 'wss' : 'ws',
             port: 5173,
+            clientPort: isCodespaces ? 443 : 5173,
         },
         watch: {
             ignored: ['**/storage/framework/views/**'],
