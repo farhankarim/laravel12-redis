@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RedisDashboardTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_queue_dashboard_page_loads(): void
     {
         $response = $this->get('/dashboard/queue');
