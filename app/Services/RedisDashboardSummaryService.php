@@ -18,6 +18,12 @@ class RedisDashboardSummaryService
 
     public const UPDATED_CHANNEL = 'dashboard.summary.updated';
 
+    /**
+     * TTL (seconds) applied to every cached summary key.
+     * Ensures stale data is automatically evicted even when the listener dies.
+     */
+    private const SUMMARY_TTL = 3600;
+
     public function getQueueSummary(): array
     {
         return $this->getSummary(self::QUEUE_SUMMARY_KEY, fn () => $this->refreshQueueSummary());
@@ -114,7 +120,8 @@ class RedisDashboardSummaryService
     private function setSummary(string $key, array $summary): void
     {
         try {
-            Redis::set($key, json_encode($summary, JSON_THROW_ON_ERROR));
+            // Always write with a TTL so stale data is never retained forever.
+            Redis::setex($key, self::SUMMARY_TTL, json_encode($summary, JSON_THROW_ON_ERROR));
         } catch (Throwable) {
         }
     }
@@ -129,22 +136,43 @@ class RedisDashboardSummaryService
 
     private function buildQueueSummary(): array
     {
-        $queueNames = collect([
-            config('queue.connections.redis.queue', 'default'),
-            'default',
-            'user-imports',
-            'chequebook-imports',
-        ])->filter()->unique()->values();
+        $queueNames = collect(config('queue.monitored_queues', ['default']))
+            ->prepend(config('queue.connections.redis.queue', 'default'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        // Fetch all Redis counts in a single pipeline round-trip.
+        $redisResults = [];
+        try {
+            $redisResults = Redis::pipeline(function ($pipe) use ($queueNames): void {
+                foreach ($queueNames as $name) {
+                    $pipe->llen("queues:{$name}");
+                    $pipe->zcard("queues:{$name}:reserved");
+                    $pipe->zcard("queues:{$name}:delayed");
+                }
+            });
+        } catch (Throwable) {
+            // Fall back to all-zero counts if Redis is unavailable.
+            $redisResults = array_fill(0, $queueNames->count() * 3, 0);
+        }
+
+        // Fetch DB queue counts in a single GROUP BY query.
+        $dbJobsByQueue = DB::table('jobs')
+            ->select('queue', DB::raw('COUNT(*) as total'))
+            ->groupBy('queue')
+            ->pluck('total', 'queue');
 
         $queues = [];
         $pendingTotal = 0;
         $reservedTotal = 0;
         $delayedTotal = 0;
 
-        foreach ($queueNames as $queueName) {
-            $redisPending = $this->redisCount('llen', "queues:{$queueName}");
-            $redisReserved = $this->redisCount('zcard', "queues:{$queueName}:reserved");
-            $redisDelayed = $this->redisCount('zcard', "queues:{$queueName}:delayed");
+        foreach ($queueNames as $i => $queueName) {
+            $base = $i * 3;
+            $redisPending = (int) ($redisResults[$base] ?? 0);
+            $redisReserved = (int) ($redisResults[$base + 1] ?? 0);
+            $redisDelayed = (int) ($redisResults[$base + 2] ?? 0);
 
             $pendingTotal += $redisPending;
             $reservedTotal += $redisReserved;
@@ -152,7 +180,7 @@ class RedisDashboardSummaryService
 
             $queues[] = [
                 'name' => $queueName,
-                'database_jobs' => DB::table('jobs')->where('queue', $queueName)->count(),
+                'database_jobs' => (int) ($dbJobsByQueue[$queueName] ?? 0),
                 'redis_pending' => $redisPending,
                 'redis_reserved' => $redisReserved,
                 'redis_delayed' => $redisDelayed,
@@ -182,7 +210,7 @@ class RedisDashboardSummaryService
 
     private function buildUsersSummary(): array
     {
-        $user = new User();
+        $user = new User;
         $table = $user->getTable();
         $primaryKey = $user->getKeyName();
 
@@ -197,16 +225,20 @@ class RedisDashboardSummaryService
         $hasEmail = Schema::hasColumn($table, 'email');
         $hasCreatedAt = Schema::hasColumn($table, 'created_at');
 
-        $latestUser = User::query()->latest($primaryKey)->first();
+        // Fetch total and verified counts in a single conditional-aggregate query.
+        $counts = DB::table($table)
+            ->selectRaw('COUNT(*) as total')
+            ->when($hasEmailVerifiedAt, fn ($q) => $q->selectRaw(
+                'SUM(CASE WHEN email_verified_at IS NOT NULL THEN 1 ELSE 0 END) as verified'
+            ))
+            ->first();
 
+        $totalUsers = (int) ($counts->total ?? 0);
+        $verifiedUsers = $hasEmailVerifiedAt ? (int) ($counts->verified ?? 0) : 0;
+        $unverifiedUsers = $hasEmailVerifiedAt ? ($totalUsers - $verifiedUsers) : $totalUsers;
+
+        $latestUser = User::query()->latest($primaryKey)->first();
         $latestUserId = $latestUser?->getAttribute($primaryKey);
-        $totalUsers = User::query()->count();
-        $verifiedUsers = $hasEmailVerifiedAt
-            ? User::query()->whereNotNull('email_verified_at')->count()
-            : 0;
-        $unverifiedUsers = $hasEmailVerifiedAt
-            ? User::query()->whereNull('email_verified_at')->count()
-            : $totalUsers;
 
         return [
             'updated_at' => now()->toIso8601String(),
@@ -220,14 +252,5 @@ class RedisDashboardSummaryService
                 'created_at' => $hasCreatedAt ? optional($latestUser->created_at)->toIso8601String() : null,
             ] : null,
         ];
-    }
-
-    private function redisCount(string $command, string $key): int
-    {
-        try {
-            return (int) Redis::command($command, [$key]);
-        } catch (Throwable) {
-            return 0;
-        }
     }
 }
