@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Services\RedisDashboardSummaryService;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
 class QueueSummaryDashboard extends Component
@@ -21,6 +22,14 @@ class QueueSummaryDashboard extends Component
 
     public function refreshSummary(RedisDashboardSummaryService $summaryService): void
     {
+        $key = 'refresh-queue-summary:'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($key, maxAttempts: 5)) {
+            return;
+        }
+
+        RateLimiter::hit($key, decaySeconds: 60);
+
         $summaryService->publishRefresh('queue');
         $this->summary = $summaryService->refreshQueueSummary();
     }

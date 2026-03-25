@@ -126,4 +126,19 @@ return [
         'table' => 'failed_jobs',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Monitored Queue Names
+    |--------------------------------------------------------------------------
+    |
+    | The dashboard reads these queue names when building the Redis queue
+    | summary. Override QUEUE_MONITORED in your .env as a comma-separated list
+    | to match your application's actual queue names.
+    |
+    */
+
+    'monitored_queues' => array_filter(
+        array_map('trim', explode(',', (string) env('QUEUE_MONITORED', 'default,user-imports,chequebook-imports')))
+    ),
+
 ];
