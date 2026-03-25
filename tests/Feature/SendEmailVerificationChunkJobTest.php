@@ -78,32 +78,21 @@ class SendEmailVerificationChunkJobTest extends TestCase
         );
     }
 
-    public function test_handle_skips_users_with_no_email(): void
+    public function test_handle_skips_unmatched_user_ids(): void
     {
         Notification::fake();
 
-        // Insert a user with a NULL email directly so we bypass the unique constraint
-        \Illuminate\Support\Facades\DB::table('users')->insert([
-            'name' => 'No Email',
-            'email' => 'placeholder-'.uniqid().'@example.com',
-            'password' => bcrypt('secret'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $userId = \Illuminate\Support\Facades\DB::table('users')->orderByDesc('id')->value('id');
-
-        // Zero notifications sent because the job queries whereNotNull(emailColumn)
+        // Dispatch with an ID that doesn't exist in the DB — the whereIn clause
+        // returns zero rows so no notifications should be sent.
         $job = new SendEmailVerificationChunkJob(
-            userIds: [$userId],
+            userIds: [999999],
             idColumn: 'id',
             emailColumn: 'email',
         );
 
         $job->handle();
 
-        // notification IS sent because the email is not null
-        Notification::assertSentOnDemandTimes(QueuedEmailVerificationNotification::class, 1);
+        Notification::assertSentOnDemandTimes(QueuedEmailVerificationNotification::class, 0);
     }
 
     public function test_handle_sends_no_notifications_when_user_ids_list_is_empty(): void

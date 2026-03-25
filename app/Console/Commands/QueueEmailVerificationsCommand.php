@@ -14,8 +14,8 @@ class QueueEmailVerificationsCommand extends Command
         {--chunk=1000 : Number of users processed per queued notification job}
         {--connection=redis : Queue connection name}
         {--queue=email-verifications : Queue name}
-        {--id-column=user_id : Users table primary key column}
-        {--email-column=email_address : Users table email column}
+        {--id-column=user_id : Users table primary key column (override to "id" for standard Laravel schemas)}
+        {--email-column=email_address : Users table email column (override to "email" for standard Laravel schemas)}
         {--email-like= : Optional filter users by email pattern}
         {--limit=0 : Optional max users to include (0 = no limit)}
         {--only-unverified=0 : 1 to target only users with null email_verified_at}';
