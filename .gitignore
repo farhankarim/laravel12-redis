@@ -19,8 +19,14 @@ Thumbs.db
 .nova/
 .zed/
 
-# Build
+# Build artefacts
 /dist
+tsconfig*.tsbuildinfo
+
+# Compiled files inside src/ (prevent accidental commits)
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
 
 # Coverage
 /coverage
