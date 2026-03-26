@@ -1,23 +1,29 @@
 {
-  "name": "Laravel + MySQL",
-  "image": "mcr.microsoft.com/devcontainers/php:1-8.3-bookworm",
+  "name": "NestJS + MongoDB + Redis",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "22"
-    }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/git:1": {}
   },
-  "forwardPorts": [
-    8000,
-    3306,
-    5173
-  ],
+  "forwardPorts": [3000, 27017, 6379],
+  "portsAttributes": {
+    "3000": { "label": "NestJS App", "onAutoForward": "notify" },
+    "27017": { "label": "MongoDB" },
+    "6379": { "label": "Redis" }
+  },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "postStartCommand": "bash .devcontainer/post-start.sh",
-  "postAttachCommand": "bash .devcontainer/post-start.sh",
   "customizations": {
     "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "firsttris.vscode-jest-runner",
+        "mongodb.mongodb-vscode"
+      ],
       "settings": {
-        "php.validate.executablePath": "/usr/local/bin/php"
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
       }
     }
   }
