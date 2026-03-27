@@ -1,157 +1,272 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Redis NestJS Dashboard
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A fully fledged **NestJS + MongoDB + Redis** application converted from the original Laravel 12 + Redis project. It preserves all functionality of the original:
 
-## Codespaces: MySQL
+- **Bulk user generation** – dispatch thousands of queue jobs that insert users in parallel chunks
+- **Email verification** – signed JWT links, queued via Redis for mass sending
+- **Real-time dashboards** – live queue statistics and user statistics via WebSockets (Socket.io)
+- **Redis pub/sub** – dashboard refresh signals broadcast to all connected clients
+- **JWT authentication** – protected API endpoints and dashboard pages
+- **Swagger API docs** – interactive at `/api/docs`
 
-This project includes a `.devcontainer` setup that installs a local MySQL-compatible server in Codespaces during post-create.
+---
 
-1. Rebuild the Codespace container so the new `.devcontainer` configuration is applied.
-2. During post-create, the database server is installed (if needed), started, and the following are created:
-	- Database: `laravel`
-	- User: `laravel`
-	- Password: `laravel`
-3. Laravel is configured to use MySQL by default via `.env` / `.env.example`.
+## Tech Stack
 
-Useful command:
+| Layer        | Technology                         |
+|--------------|------------------------------------|
+| Framework    | [NestJS](https://nestjs.com/) v10  |
+| Language     | TypeScript                         |
+| Database     | MongoDB 7 (via Mongoose)           |
+| Queue        | Redis + [Bull](https://github.com/OptimalBits/bull) |
+| Auth         | Passport.js + JWT                  |
+| Email        | Nodemailer                         |
+| Real-time    | Socket.io (WebSockets)             |
+| API Docs     | Swagger / OpenAPI 3                |
 
-```bash
-php artisan migrate
-```
+---
 
-## Codespaces: Redis + queue generation
+## Quick Start (Local)
 
-Redis is installed in post-create and started in post-start.
+### Prerequisites
 
-- Default queue connection is Redis (`QUEUE_CONNECTION=redis`).
-- Redis client is Predis (`REDIS_CLIENT=predis`).
+- Node.js ≥ 18
+- MongoDB 6+ running on `localhost:27017`
+- Redis 6+ running on `localhost:6379`
 
-Generate 1,000,000 users through Redis queue jobs:
-
-```bash
-./scripts/generate-million-users.sh
-```
-
-Optional overrides:
+### Setup
 
 ```bash
-TOTAL_USERS=1000000 CHUNK_SIZE=1000 WORKERS=6 QUEUE_NAME=user-imports QUEUE_CONNECTION=redis ./scripts/generate-million-users.sh
+# 1. Clone the repo and switch to this branch
+git clone https://github.com/farhankarim/laravel12-redis.git
+cd laravel12-redis
+git checkout nodenest        # or copilot/nodenest during PR review
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env – set JWT_SECRET and optionally MAIL_* settings
+
+# 4. Start the app (development mode with hot reload)
+npm run start:dev
 ```
 
-## Email verification batch + free mail testing
+The app will be available at **http://localhost:3000**.
 
-Recommended free mail testing service: **Mailtrap Email Testing** (free tier available).
+---
 
-Set these env values (from Mailtrap SMTP credentials) in `.env`:
+## Running on GitHub Codespaces
 
-```dotenv
-MAIL_MAILER=smtp
-MAIL_HOST=sandbox.smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_USERNAME=your_mailtrap_username
-MAIL_PASSWORD=your_mailtrap_password
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS="hello@example.com"
-MAIL_FROM_NAME="${APP_NAME}"
-```
+This repository ships with a full **Dev Container** configuration (`.devcontainer/`) that automatically installs and starts MongoDB and Redis when your Codespace launches.
 
-Dispatch a queued batch for verification emails (for generated users):
+### Steps
 
+1. **Open in Codespaces**
+   - On the GitHub repository page, click **Code → Codespaces → Create codespace on nodenest**.
+
+2. **Wait for setup**
+   - The `postCreateCommand` script runs automatically:
+     - Installs MongoDB 7 and Redis
+     - Starts both services
+     - Runs `npm install`
+     - Copies `.env.example` → `.env`
+
+3. **Edit `.env`** (optional but recommended)
+   ```
+   JWT_SECRET=your-super-secret-key
+   # For emails, fill in MAIL_HOST / MAIL_USER / MAIL_PASS
+   # Use Mailtrap (https://mailtrap.io) for free SMTP testing
+   ```
+
+4. **Start the application**
+   ```bash
+   npm run start:dev
+   ```
+
+5. **Access the app**
+   - Codespaces automatically forwards port **3000**.
+   - Click the **Open in Browser** notification, or open the **Ports** tab and click port 3000.
+   - The app index is at `/` and the dashboards are at `/dashboard/queue.html` and `/dashboard/users.html`.
+
+---
+
+## API Reference
+
+Interactive Swagger docs are available at **`/api/docs`** once the app is running.
+
+### Authentication
+
+| Method | Endpoint         | Description                  |
+|--------|-----------------|------------------------------|
+| POST   | `/auth/register` | Register a new user          |
+| POST   | `/auth/login`    | Login, returns `access_token`|
+| GET    | `/auth/profile`  | Get current user (JWT)       |
+
+### Users
+
+| Method | Endpoint              | Auth? | Description                         |
+|--------|-----------------------|-------|-------------------------------------|
+| POST   | `/users`              | ✓     | Create a single user                |
+| GET    | `/users`              | ✓     | List users (paginated)              |
+| GET    | `/users/:id`          | ✓     | Get user by ID                      |
+| GET    | `/users/summary`      | ✓     | User statistics (total/verified)    |
+| POST   | `/users/generate`     | ✓     | Bulk-generate users via queue       |
+
+**Example – Generate 50 000 users:**
 ```bash
-php artisan users:queue-email-verifications --connection=redis --queue=email-verifications --id-column=user_id --email-column=email_address
+curl -X POST http://localhost:3000/users/generate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"total": 50000, "chunkSize": 500}'
 ```
 
-Or run the helper script with parallel workers:
+### Queue
 
-```bash
-WORKERS=6 ID_COLUMN=user_id EMAIL_COLUMN=email_address ./scripts/queue-email-verifications.sh
+| Method | Endpoint                        | Auth? | Description                           |
+|--------|--------------------------------|-------|---------------------------------------|
+| GET    | `/queue/stats`                  | ✓     | Bull queue job counts                 |
+| POST   | `/queue/email-verifications`    | ✓     | Queue email verification for unverified users |
+
+### Dashboard (API)
+
+| Method | Endpoint                   | Auth? | Description                          |
+|--------|---------------------------|-------|--------------------------------------|
+| GET    | `/api/dashboard/queue`     | ✓     | Queue statistics (JSON)              |
+| GET    | `/api/dashboard/users`     | ✓     | User statistics (JSON)               |
+| POST   | `/api/dashboard/refresh`   | ✓     | Trigger pub/sub refresh              |
+| GET    | `/email/verify?token=…`    | ✗     | Verify email via signed link         |
+
+---
+
+## WebSocket / Real-time Dashboard
+
+Connect to the Socket.io namespace **`/dashboard`**:
+
+```js
+const socket = io('http://localhost:3000/dashboard');
+
+// Request current stats
+socket.emit('get-queue-summary');   // → receives 'queue-summary'
+socket.emit('get-users-summary');   // → receives 'users-summary'
+
+// Trigger a full Redis pub/sub refresh
+socket.emit('refresh-dashboard');   // → broadcasts to all clients
 ```
 
-Safe dry run on a small sample:
+Events emitted by server:
 
-```bash
-php artisan users:queue-email-verifications --connection=redis --queue=email-verifications --id-column=user_id --email-column=email_address --limit=20
+| Event            | Payload                                  |
+|-----------------|------------------------------------------|
+| `queue-summary`  | `{ queues: [...], totals: {...}, cachedAt }` |
+| `users-summary`  | `{ total, verified, unverified, latestUser, cachedAt }` |
+
+---
+
+## Queue Architecture
+
+```
+POST /users/generate
+        │
+        ▼
+  user-imports queue (Redis/Bull)
+        │
+        ├── InsertUsersChunkJob  ×N  ──► MongoDB bulk insert
+        │
+        └── (repeat for each chunk)
+
+POST /queue/email-verifications
+        │
+        ▼
+  email-verifications queue (Redis/Bull)
+        │
+        └── SendEmailVerificationChunkJob  ×N  ──► Nodemailer SMTP
 ```
 
-## Livewire Redis dashboards
+---
 
-Livewire is installed and two dashboards are available:
+## Project Structure
 
-- Queue summary: `/dashboard/queue`
-- Users summary: `/dashboard/users`
+```
+src/
+├── main.ts                  # Bootstrap
+├── app.module.ts            # Root module
+├── auth/                    # JWT authentication
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   ├── auth.module.ts
+│   ├── jwt.strategy.ts
+│   ├── jwt-auth.guard.ts
+│   └── dto/login.dto.ts
+├── users/                   # User management
+│   ├── users.controller.ts
+│   ├── users.service.ts
+│   ├── users.module.ts
+│   ├── schemas/user.schema.ts
+│   └── dto/
+│       ├── create-user.dto.ts
+│       └── generate-users.dto.ts
+├── queue/                   # Bull queues
+│   ├── queue.controller.ts
+│   ├── queue.module.ts
+│   ├── dto/queue-email-verifications.dto.ts
+│   └── processors/
+│       ├── insert-users.processor.ts
+│       └── send-email-verification.processor.ts
+├── dashboard/               # Stats + WebSocket
+│   ├── dashboard.controller.ts
+│   ├── dashboard.service.ts
+│   ├── dashboard.gateway.ts
+│   └── dashboard.module.ts
+└── mail/                    # Nodemailer
+    ├── mail.service.ts
+    └── mail.module.ts
 
-The dashboards read/write cached summary snapshots using Redis keys:
-
-- `dashboard:queue_summary`
-- `dashboard:users_summary`
-
-Pub/Sub channels:
-
-- Refresh requests: `dashboard.summary.refresh`
-- Update notifications: `dashboard.summary.updated`
-
-Run the Redis pub/sub listener so refresh messages trigger summary rebuilds:
-
-```bash
-php artisan dashboard:redis-listen
+public/
+├── index.html               # Landing page
+└── dashboard/
+    ├── login.html           # Login page
+    ├── queue.html           # Real-time queue dashboard
+    └── users.html           # Real-time users dashboard
 ```
 
-Step-by-step implementation guide:
+---
 
-- [Livewire + Redis dashboard tutorial](docs/livewire-redis-dashboard-step-by-step.md)
+## Environment Variables
 
-## About Laravel
+| Variable          | Default                                    | Description                         |
+|-------------------|--------------------------------------------|-------------------------------------|
+| `APP_PORT`        | `3000`                                     | HTTP port                           |
+| `NODE_ENV`        | `development`                              | Environment                         |
+| `JWT_SECRET`      | `changeme`                                 | **Change this in production!**      |
+| `JWT_EXPIRES_IN`  | `7d`                                       | Token lifetime                      |
+| `MONGODB_URI`     | `mongodb://localhost:27017/laravel12_redis`| MongoDB connection string           |
+| `REDIS_HOST`      | `127.0.0.1`                                | Redis host                          |
+| `REDIS_PORT`      | `6379`                                     | Redis port                          |
+| `REDIS_PASSWORD`  | _(empty)_                                  | Redis password (leave empty locally)|
+| `MAIL_HOST`       | `smtp.mailtrap.io`                         | SMTP host                           |
+| `MAIL_PORT`       | `587`                                      | SMTP port                           |
+| `MAIL_USER`       | _(empty)_                                  | SMTP username                       |
+| `MAIL_PASS`       | _(empty)_                                  | SMTP password                       |
+| `MAIL_FROM`       | `noreply@example.com`                      | From address                        |
+| `APP_URL`         | `http://localhost:3000`                    | Base URL (for email verification links) |
+| `QUEUE_NAMES`     | `default,user-imports,email-verifications` | Comma-separated queue names to monitor |
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Available Scripts
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Command              | Description                          |
+|---------------------|--------------------------------------|
+| `npm run start:dev`  | Start in watch mode (hot reload)     |
+| `npm run build`      | Compile TypeScript to `dist/`        |
+| `npm run start:prod` | Run compiled production build        |
+| `npm run test`       | Run unit tests (Jest)                |
+| `npm run lint`       | Run ESLint                           |
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT
