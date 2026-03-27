@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import Redis from 'ioredis';
+import { UsersService } from '../users/users.service';
 
 export interface QueueRedisStats {
   name: string;
@@ -56,6 +57,7 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
     @InjectQueue('user-imports') private readonly userImportsQueue: Queue,
     @InjectQueue('email-verifications') private readonly emailVerificationsQueue: Queue,
   ) {}
@@ -195,6 +197,9 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
     if (payload.type !== 'email-verification') {
       throw new UnauthorizedException('Invalid token type');
     }
+
+    // Persist verified state in MongoDB
+    await this.usersService.markEmailVerified(payload.sub);
 
     // Invalidate cache so dashboard shows updated verified count
     await this.redisClient.del(this.USERS_SUMMARY_KEY);
