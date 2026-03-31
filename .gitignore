@@ -4,6 +4,7 @@ logs/
 
 # Dependencies
 node_modules/
+frontend/node_modules/
 
 # Environment files
 .env
@@ -22,6 +23,7 @@ Thumbs.db
 # Build artefacts
 /dist
 tsconfig*.tsbuildinfo
+frontend/dist/
 
 # Compiled files inside src/ (prevent accidental commits)
 src/**/*.js
