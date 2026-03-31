@@ -17,19 +17,23 @@
 8. [Queue Module (`src/queue/`)](#8-queue-module-srcqueue)
 9. [Dashboard Module (`src/dashboard/`)](#9-dashboard-module-srcdashboard)
 10. [Mail Module (`src/mail/`)](#10-mail-module-srcmail)
-11. [Static Frontend Pages (`public/`)](#11-static-frontend-pages-public)
-12. [Complete Data-Flow Walkthroughs](#12-complete-data-flow-walkthroughs)
-13. [Redis Architecture — Keys, Channels & TTLs](#13-redis-architecture--keys-channels--ttls)
-14. [Environment Variables — Full Reference](#14-environment-variables--full-reference)
-15. [Security Architecture](#15-security-architecture)
-16. [Running the Application](#16-running-the-application)
-17. [Laravel → NestJS Cheat Sheet](#17-laravel--nestjs-cheat-sheet)
+11. [Transactions Module (`src/transactions/`)](#11-transactions-module-srctransactions)
+12. [Repository Pattern (`src/common/`)](#12-repository-pattern-srccommon)
+13. [React Admin Panel (`frontend/`)](#13-react-admin-panel-frontend)
+14. [Module Scaffolding CLI (`scripts/`)](#14-module-scaffolding-cli-scripts)
+15. [Static Frontend Pages (`public/`)](#15-static-frontend-pages-public)
+16. [Complete Data-Flow Walkthroughs](#16-complete-data-flow-walkthroughs)
+17. [Redis Architecture — Keys, Channels & TTLs](#17-redis-architecture--keys-channels--ttls)
+18. [Environment Variables — Full Reference](#18-environment-variables--full-reference)
+19. [Security Architecture](#19-security-architecture)
+20. [Running the Application](#20-running-the-application)
+21. [Laravel → NestJS Cheat Sheet](#21-laravel--nestjs-cheat-sheet)
 
 ---
 
 ## 1. Project Overview
 
-This application started as a **Laravel 12 + Livewire + MySQL + Redis** project. It was fully rewritten in **NestJS + TypeScript + MongoDB + Bull/Redis**. Every feature of the original is preserved:
+This application started as a **Laravel 12 + Livewire + MySQL + Redis** project. It was fully rewritten in **NestJS + TypeScript + MongoDB + Bull/Redis**. Every feature of the original is preserved and new capabilities have been added:
 
 | Feature | Description |
 |---|---|
@@ -40,11 +44,16 @@ This application started as a **Laravel 12 + Livewire + MySQL + Redis** project.
 | Redis pub/sub | Dashboard refresh signals broadcast to all connected clients |
 | JWT authentication | Protected API endpoints and dashboard pages |
 | Swagger API docs | Interactive at `/api/docs` |
+| Transactions CRUD | Full create/read/update/delete for financial transactions |
+| Repository pattern | `IBaseRepository<T>` abstraction with concrete Mongoose implementations |
+| React Admin panel | Full-featured admin UI at `/admin/` (Users + Transactions DataGrids, Dashboard stats) |
+| Module scaffolding CLI | `npm run generate:module <Name>` generates all repository-pattern boilerplate |
 
 The app exposes:
 - An **HTTP REST API** (JSON) for all data operations
 - A **WebSocket namespace** (`/dashboard`) for real-time dashboard updates
 - **Static HTML pages** at `/dashboard/queue.html`, `/dashboard/users.html`, `/dashboard/login.html`, and `/dashboard/signup.html`
+- A **React Admin SPA** at `/admin/`
 - An **email verification endpoint** at `/email/verify?token=…`
 
 ---
@@ -75,8 +84,12 @@ The app exposes:
 laravel12-redis/
 │
 ├── src/                          # All TypeScript application source
-│   ├── main.ts                   # Application entry point (= public/index.php + bootstrap/app.php)
-│   ├── app.module.ts             # Root module wiring everything together (= config/app.php)
+│   ├── main.ts                   # Application entry point (CORS + static assets + Swagger)
+│   ├── app.module.ts             # Root module wiring everything together
+│   │
+│   ├── common/                   # Shared abstractions
+│   │   └── interfaces/
+│   │       └── base-repository.interface.ts  # IBaseRepository<T, ID> generic contract
 │   │
 │   ├── auth/                     # Authentication feature module
 │   │   ├── auth.module.ts        # Module definition + JWT/Passport config
@@ -90,56 +103,91 @@ laravel12-redis/
 │   ├── users/                    # User management feature module
 │   │   ├── users.module.ts       # Module definition
 │   │   ├── users.controller.ts   # REST endpoints for users + bulk generate
-│   │   ├── users.service.ts      # All MongoDB user operations
+│   │   ├── users.service.ts      # All user operations (delegates to IUserRepository)
 │   │   ├── schemas/
-│   │   │   └── user.schema.ts    # Mongoose schema (= Eloquent model + migration)
+│   │   │   └── user.schema.ts    # Mongoose schema
+│   │   ├── repositories/
+│   │   │   ├── user.repository.interface.ts  # IUserRepository contract + USER_REPOSITORY token
+│   │   │   └── user.repository.ts            # Concrete Mongoose implementation
 │   │   └── dto/
-│   │       ├── create-user.dto.ts    # Validation for single user creation
-│   │       └── generate-users.dto.ts # Validation for bulk generation params
+│   │       ├── create-user.dto.ts
+│   │       └── generate-users.dto.ts
+│   │
+│   ├── transactions/             # Financial transactions feature module
+│   │   ├── transactions.module.ts
+│   │   ├── transactions.controller.ts  # Full CRUD: POST/GET/PUT/DELETE /transactions
+│   │   ├── transactions.service.ts
+│   │   ├── schemas/
+│   │   │   └── transaction.schema.ts
+│   │   ├── repositories/
+│   │   │   ├── transaction.repository.interface.ts  # ITransactionRepository + TRANSACTION_REPOSITORY token
+│   │   │   └── transaction.repository.ts            # Concrete Mongoose implementation
+│   │   └── dto/
+│   │       ├── create-transaction.dto.ts
+│   │       └── update-transaction.dto.ts
 │   │
 │   ├── queue/                    # Bull queue feature module
 │   │   ├── queue.module.ts       # Bull registration + Redis config
 │   │   ├── queue.controller.ts   # GET /queue/stats, POST /queue/email-verifications
 │   │   ├── dto/
-│   │   │   └── queue-email-verifications.dto.ts  # Validation for email-verification dispatch
+│   │   │   └── queue-email-verifications.dto.ts
 │   │   └── processors/
-│   │       ├── insert-users.processor.ts          # Worker: bulk insert users chunk
-│   │       └── send-email-verification.processor.ts  # Worker: send verification emails chunk
+│   │       ├── insert-users.processor.ts
+│   │       └── send-email-verification.processor.ts
 │   │
 │   ├── dashboard/                # Real-time dashboard feature module
-│   │   ├── dashboard.module.ts   # Module definition
-│   │   ├── dashboard.controller.ts  # REST: email verify, queue/users stats, refresh
+│   │   ├── dashboard.module.ts
+│   │   ├── dashboard.controller.ts
 │   │   ├── dashboard.service.ts  # Redis cache, pub/sub, JWT token verification
 │   │   └── dashboard.gateway.ts  # Socket.io WebSocket gateway
 │   │
 │   └── mail/                     # Email sending feature module
-│       ├── mail.module.ts        # Module definition + JWT (for token signing)
+│       ├── mail.module.ts
 │       └── mail.service.ts       # Nodemailer transporter + verification URL generator
 │
 ├── public/                       # Static files served directly by Express
-│   ├── index.html                # Landing page with links to all sections
+│   ├── index.html                # Landing page
+│   ├── admin/                    # Built React Admin SPA (output of `npm run build:admin`)
+│   │   ├── index.html
+│   │   └── assets/
 │   └── dashboard/
-│       ├── login.html            # Login form (calls POST /auth/login)
-│       ├── signup.html           # Registration form (calls POST /auth/register)
-│       ├── queue.html            # Real-time queue stats dashboard (Socket.io)
-│       └── users.html            # Real-time users stats dashboard (Socket.io)
+│       ├── login.html
+│       ├── signup.html
+│       ├── queue.html
+│       └── users.html
+│
+├── frontend/                     # React Admin panel source (Vite + React Admin)
+│   ├── src/
+│   │   ├── App.tsx               # <Admin> with Users + Transactions resources
+│   │   ├── providers/
+│   │   │   ├── authProvider.ts   # JWT auth provider
+│   │   │   └── dataProvider.ts   # Custom data provider (NestJS REST API)
+│   │   └── resources/
+│   │       ├── users.tsx         # Users DataGrid
+│   │       ├── transactions.tsx  # Transactions CRUD
+│   │       └── dashboard.tsx     # Stats screen
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── scripts/
+│   └── generate-module.ts        # CLI: npm run generate:module <ModuleName>
 │
 ├── docs/                         # Developer documentation
-│   ├── livewire-redis-dashboard-step-by-step.md  # Original Laravel Livewire guide
-│   ├── laravel-to-nest-changes.md                # What changed in the conversion
-│   ├── laravel-nest-equivalents.md               # Laravel ↔ NestJS concept mapping
-│   └── project-deep-dive.md                      # This document
+│   ├── livewire-redis-dashboard-step-by-step.md
+│   ├── laravel-to-nest-changes.md
+│   ├── laravel-nest-equivalents.md
+│   └── project-deep-dive.md      # This document
 │
 ├── .devcontainer/                # GitHub Codespaces configuration
-│   ├── devcontainer.json         # Container definition + port forwards
-│   ├── post-create.sh            # Installs MongoDB, Redis, npm packages
-│   └── post-start.sh            # Starts services on each Codespace start
+│   ├── devcontainer.json
+│   ├── post-create.sh
+│   └── post-start.sh
 │
-├── nest-cli.json                 # NestJS CLI configuration + build assets
-├── tsconfig.json                 # TypeScript compiler options
-├── tsconfig.build.json           # tsconfig for production builds (excludes tests)
-├── package.json                  # Dependencies and npm scripts
-├── .env.example                  # Template for the required .env file
+├── nest-cli.json
+├── tsconfig.json
+├── tsconfig.build.json           # Excludes frontend/ from NestJS build
+├── package.json                  # NestJS dependencies + scripts
+├── .env.example
 └── .gitignore
 ```
 
@@ -161,22 +209,23 @@ async function bootstrap() {
   // 1. Create the NestJS application (Express adapter)
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // 2. Serve public/ folder as static files
-  //    → public/index.html is served at http://localhost:3000/
+  // 2. Enable CORS — required by the React Admin dev server (port 5173)
+  app.enableCors();
+
+  // 3. Serve public/ folder as static files
+  //    → public/index.html served at /
+  //    → public/admin/ served at /admin/  (React Admin SPA)
   //    → public/dashboard/*.html served at /dashboard/*.html
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
-  // 3. Global validation pipe — validates every request body automatically
-  //    whitelist: true     → strips fields not declared on the DTO
-  //    forbidNonWhitelisted → throws 400 if unknown fields arrive
-  //    transform: true     → auto-casts "1" → 1 for @Type(() => Number) DTOs
+  // 4. Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
     forbidNonWhitelisted: true,
   }));
 
-  // 4. Swagger / OpenAPI setup
+  // 5. Swagger / OpenAPI setup
   const config = new DocumentBuilder()
     .setTitle('Redis NestJS Dashboard API')
     .setDescription('...')
@@ -185,15 +234,20 @@ async function bootstrap() {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
 
-  // 5. Listen on configured port
-  await app.listen(process.env.APP_PORT || 3000);
+  // 6. Listen on configured port
+  const port = process.env.APP_PORT || 3000;
+  await app.listen(port);
+  console.log(`🚀 http://localhost:${port}`);
+  console.log(`🖥️  React Admin: http://localhost:${port}/admin/`);
+  console.log(`📖 Swagger:     http://localhost:${port}/api/docs`);
 }
 bootstrap();
 ```
 
 **Laravel equivalent:**
 - `NestFactory.create(AppModule)` = `new Application(dirname(__DIR__))` in `bootstrap/app.php`
-- `useStaticAssets()` = `public_path()` / `asset()` helper / static file serving
+- `enableCors()` = `Header('Access-Control-Allow-Origin: *')` / CORS middleware
+- `useStaticAssets()` = `public_path()` / static file serving
 - `useGlobalPipes(ValidationPipe)` = global middleware in `app/Http/Kernel.php`
 - `SwaggerModule.setup(...)` = would require `l5-swagger` in Laravel
 
@@ -207,7 +261,7 @@ bootstrap();
     // Reads .env file and makes ConfigService available everywhere
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // MongoDB connection — equivalent to config/database.php + DB_* env vars
+    // MongoDB connection
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -215,11 +269,12 @@ bootstrap();
       }),
     }),
 
-    AuthModule,       // auth/ feature
-    UsersModule,      // users/ feature
-    QueueModule,      // queue/ + Bull registration
-    DashboardModule,  // dashboard/ + WebSocket gateway
-    MailModule,       // mail/ + Nodemailer
+    AuthModule,           // auth/ feature
+    UsersModule,          // users/ feature
+    QueueModule,          // queue/ + Bull registration
+    DashboardModule,      // dashboard/ + WebSocket gateway
+    MailModule,           // mail/ + Nodemailer
+    TransactionsModule,   // transactions/ feature (new)
   ],
 })
 export class AppModule {}
@@ -271,7 +326,9 @@ AppModule
  │     └── JwtModule    (imports + exports)
  ├── UsersModule
  │     ├── MongooseModule.forFeature([User])
- │     └── BullModule.registerQueue('user-imports')
+ │     ├── BullModule.registerQueue('user-imports')
+ │     ├── UserRepository       (concrete implementation)
+ │     └── USER_REPOSITORY      (DI token → UserRepository)
  ├── QueueModule
  │     ├── BullModule.forRoot (Redis config)
  │     ├── BullModule.registerQueue('user-imports', 'email-verifications')
@@ -281,8 +338,12 @@ AppModule
  │     ├── JwtModule    (for token verification)
  │     ├── BullModule.registerQueue('user-imports', 'email-verifications')
  │     └── UsersModule  (imports)
- └── MailModule
-       └── JwtModule    (for signing verification tokens)
+ ├── MailModule
+ │     └── JwtModule    (for signing verification tokens)
+ └── TransactionsModule
+       ├── MongooseModule.forFeature([Transaction])
+       ├── TransactionRepository       (concrete implementation)
+       └── TRANSACTION_REPOSITORY      (DI token → TransactionRepository)
 ```
 
 ---
@@ -505,10 +566,12 @@ public function rules(): array {
 
 | File | Purpose | Laravel equivalent |
 |---|---|---|
-| `users.module.ts` | Registers Mongoose model + Bull queue | Model + `config/database.php` binding |
+| `users.module.ts` | Registers Mongoose model, Bull queue, and repository | Model + `config/database.php` binding |
 | `users.controller.ts` | `GET/POST /users`, `GET /users/:id`, `GET /users/summary`, `POST /users/generate` | `UserController` |
-| `users.service.ts` | All database operations on the User collection | `UserRepository` or fat Eloquent model |
+| `users.service.ts` | Delegates database operations to `IUserRepository` | `UserRepository` / fat Eloquent model |
 | `schemas/user.schema.ts` | Mongoose schema defining the `users` collection | `User` Eloquent model + migration |
+| `repositories/user.repository.interface.ts` | `IUserRepository` interface + `USER_REPOSITORY` DI token | Service Container binding |
+| `repositories/user.repository.ts` | Concrete Mongoose implementation of `IUserRepository` | `EloquentUserRepository` |
 | `dto/create-user.dto.ts` | Validation for creating a single user | `CreateUserRequest` |
 | `dto/generate-users.dto.ts` | Validation for bulk generation params | Custom FormRequest |
 
@@ -1286,9 +1349,210 @@ Both approaches are secure. The JWT approach is slightly more portable and requi
 
 ---
 
-## 11. Static Frontend Pages (`public/`)
+## 11. Transactions Module (`src/transactions/`)
 
-All pages use plain HTML + Tailwind CSS (loaded from CDN) + vanilla JavaScript. There is no build step for the frontend. Express serves these files directly from the `public/` directory.
+The Transactions module provides a full CRUD REST API for financial transaction records (loans, donations, repayments). It follows exactly the same repository pattern as the Users module.
+
+### Schema — `schemas/transaction.schema.ts`
+
+| Field | Type | Description |
+|---|---|---|
+| `participantId` | `string` | Required — links the transaction to a participant |
+| `date` | `Date \| null` | Transaction date |
+| `type` | `'loan taken' \| 'donation' \| 'loan returned' \| null` | Transaction type enum |
+| `amount` | `string \| null` | Amount (stored as string to preserve formatting) |
+| `status` | `number` (default `1`) | Active/inactive flag |
+| `expectedReturnDate` | `Date \| null` | For loans — when repayment is expected |
+| `repaymentAmount` | `number \| null` | Actual repayment amount |
+| `tenure` | `string \| null` | Loan tenure description |
+| `paymentStatus` | `string \| null` | Payment status label |
+
+Timestamps (`createdAt`, `updatedAt`) are added automatically via `@Schema({ timestamps: true })`.
+
+### Repository Interface — `ITransactionRepository`
+
+```typescript
+export interface ITransactionRepository extends IBaseRepository<TransactionDocument> {
+  findPaginated(page, limit, filters?): Promise<TransactionPaginatedResult>;
+  findByParticipantId(participantId: string): Promise<TransactionDocument[]>;
+}
+```
+
+`TRANSACTION_REPOSITORY` is the DI token used to inject the concrete implementation.
+
+### REST Endpoints
+
+All endpoints require a Bearer JWT.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/transactions` | Create a transaction |
+| `GET` | `/transactions` | List with pagination + filters (`participantId`, `type`, `paymentStatus`, `status`) |
+| `GET` | `/transactions/:id` | Get one by MongoDB ObjectId |
+| `PUT` | `/transactions/:id` | Full/partial update |
+| `DELETE` | `/transactions/:id` | Delete (returns `204 No Content`) |
+
+**Laravel equivalent:** `Route::apiResource('transactions', TransactionController::class)` with a `TransactionRepository` behind the controller.
+
+---
+
+## 12. Repository Pattern (`src/common/`)
+
+### `IBaseRepository<T, ID>`
+
+All data access in this project goes through a typed repository interface:
+
+```typescript
+// src/common/interfaces/base-repository.interface.ts
+export interface IBaseRepository<T, ID = string> {
+  findById(id: ID): Promise<T | null>;
+  findAll(): Promise<T[]>;
+  create(entity: Partial<T>): Promise<T>;
+  update(id: ID, entity: Partial<T>): Promise<T | null>;
+  delete(id: ID): Promise<boolean>;
+}
+```
+
+### How It Works
+
+Each module extends `IBaseRepository` with domain-specific methods:
+
+```
+IBaseRepository<T>
+    └── IUserRepository           (+ findByEmail, getSummary, findPaginated, bulkInsert, findByIds)
+    └── ITransactionRepository    (+ findPaginated, findByParticipantId)
+```
+
+The concrete Mongoose class implements the interface and is registered with a token constant:
+
+```typescript
+// In the module definition
+providers: [
+  UserRepository,
+  { provide: USER_REPOSITORY, useClass: UserRepository },
+  UsersService,
+],
+```
+
+The service injects by token:
+
+```typescript
+constructor(
+  @Inject(USER_REPOSITORY)
+  private readonly userRepository: IUserRepository,
+) {}
+```
+
+This means you can swap `UserRepository` for a different implementation (e.g., an in-memory mock for testing) by changing only the module definition.
+
+**Laravel equivalent:**
+
+```php
+// AppServiceProvider::register()
+$this->app->bind(IUserRepository::class, EloquentUserRepository::class);
+
+// In the service constructor
+public function __construct(private IUserRepository $users) {}
+```
+
+---
+
+## 13. React Admin Panel (`frontend/`)
+
+The `frontend/` directory contains a [React Admin](https://marmelab.com/react-admin/) SPA built with Vite. In production it is compiled to `public/admin/` and served by NestJS as static files.
+
+### Features
+
+| Screen | Description |
+|---|---|
+| Login | Authenticates via `POST /auth/login`, stores JWT in `localStorage` |
+| Users | Read-only paginated DataGrid |
+| Transactions | Full CRUD DataGrid — list, show, create, edit, delete |
+| Dashboard | Live stats cards (total users, verified users, queue job counts) |
+
+### Custom Providers
+
+**`authProvider.ts`** — implements React Admin's `AuthProvider` interface:
+- `login({ username, password })` → calls `POST /auth/login`, stores token
+- `logout()` → removes token from `localStorage`
+- `checkAuth()` → verifies token exists
+- `getIdentity()` → calls `GET /auth/profile`
+
+**`dataProvider.ts`** — implements React Admin's `DataProvider` interface:
+- Maps `getList` → `GET /<resource>?page=&limit=`
+- Maps `getOne` → `GET /<resource>/:id`
+- Maps `create` → `POST /<resource>`
+- Maps `update` → `PUT /<resource>/:id`
+- Maps `delete` → `DELETE /<resource>/:id`
+- Normalises MongoDB `_id` → `id` for React Admin compatibility
+
+### Development vs. Production
+
+```
+Development:
+  npm run start:dev          → NestJS on :3000
+  cd frontend && npm run dev → Vite dev server on :5173 (proxies API to :3000)
+
+Production build:
+  npm run build:admin        → Vite builds to public/admin/
+  npm run build              → NestJS compiles to dist/
+  npm run start:prod         → serves everything from dist/ + public/
+```
+
+---
+
+## 14. Module Scaffolding CLI (`scripts/`)
+
+The `scripts/generate-module.ts` file is a TypeScript CLI that generates all repository-pattern boilerplate for a new NestJS module.
+
+### Usage
+
+```bash
+npm run generate:module Payment
+npm run generate:module BlogPost
+```
+
+### Generated Files (example: `Payment`)
+
+```
+src/payments/
+├── schemas/payment.schema.ts
+├── repositories/
+│   ├── payment.repository.interface.ts   # IPaymentRepository + PAYMENT_REPOSITORY token
+│   └── payment.repository.ts             # Concrete Mongoose implementation
+├── dto/
+│   ├── create-payment.dto.ts
+│   └── update-payment.dto.ts
+├── payments.service.ts
+├── payments.controller.ts
+└── payments.module.ts
+```
+
+After generation, register the module in `src/app.module.ts`:
+
+```typescript
+import { PaymentsModule } from './payments/payments.module';
+
+@Module({ imports: [..., PaymentsModule] })
+export class AppModule {}
+```
+
+### How It Works
+
+The script:
+1. Accepts a PascalCase module name (e.g. `BlogPost`)
+2. Derives camelCase, kebab-case, snake_case, and pluralised forms automatically
+3. Renders eight template strings and writes them to disk
+4. Skips files that already exist (idempotent)
+5. Prints a registration reminder on completion
+
+**Laravel equivalent:** `php artisan make:model Payment -mrc` + manually writing a repository interface + binding in a ServiceProvider.
+
+---
+
+## 15. Static Frontend Pages (`public/`)
+
+All pages use plain HTML + Tailwind CSS (loaded from CDN) + vanilla JavaScript. There is no build step for these pages. Express serves them directly from the `public/` directory alongside the built React Admin SPA (`public/admin/`).
 
 ### Page Architecture
 
@@ -1355,7 +1619,7 @@ The key architectural difference:
 
 ---
 
-## 12. Complete Data-Flow Walkthroughs
+## 16. Complete Data-Flow Walkthroughs
 
 ### Flow 1: User Registration
 
@@ -1505,7 +1769,7 @@ GET /email/verify?token=<JWT>
 
 ---
 
-## 13. Redis Architecture — Keys, Channels & TTLs
+## 17. Redis Architecture — Keys, Channels & TTLs
 
 Bull uses Redis internally to store job queues. The app also uses Redis directly for caching and pub/sub.
 
@@ -1538,7 +1802,7 @@ The dashboard reads `llen bull:<name>:wait` (pending jobs), `zcard bull:<name>:a
 
 ---
 
-## 14. Environment Variables — Full Reference
+## 18. Environment Variables — Full Reference
 
 Create a `.env` file at the project root (copy from `.env.example`).
 
@@ -1575,7 +1839,7 @@ Create a `.env` file at the project root (copy from `.env.example`).
 
 ---
 
-## 15. Security Architecture
+## 19. Security Architecture
 
 ### Authentication Flow
 
@@ -1650,7 +1914,7 @@ This is equivalent to calling `$request->validated()` in every Laravel controlle
 
 ---
 
-## 16. Running the Application
+## 20. Running the Application
 
 ### Prerequisites
 
@@ -1674,6 +1938,7 @@ npm run start:dev
 
 App is available at:
 - Landing page: `http://localhost:3000/`
+- React Admin panel: `http://localhost:3000/admin/`
 - Queue Dashboard: `http://localhost:3000/dashboard/queue.html`
 - Users Dashboard: `http://localhost:3000/dashboard/users.html`
 - Swagger API Docs: `http://localhost:3000/api/docs`
@@ -1694,9 +1959,12 @@ Just open the repo in a Codespace, wait for setup, then run `npm run start:dev`.
 |---|---|
 | `npm run start:dev` | Development mode with hot reload (TypeScript watch) |
 | `npm run build` | Compile TypeScript to `dist/` |
+| `npm run build:admin` | Build React Admin panel to `public/admin/` |
+| `npm run build:all` | Build admin panel then compile NestJS |
 | `npm run start:prod` | Run compiled production build from `dist/main.js` |
 | `npm run lint` | Run ESLint on all TypeScript files |
 | `npm test` | Run unit tests with Jest |
+| `npm run generate:module <Name>` | Scaffold a complete repository-pattern module |
 
 ### What You Do NOT Need to Run
 
@@ -1706,7 +1974,7 @@ Unlike Laravel, there is **no separate worker process**. You do not need to run:
 
 ---
 
-## 17. Laravel → NestJS Cheat Sheet
+## 21. Laravel → NestJS Cheat Sheet
 
 ### Concepts
 
