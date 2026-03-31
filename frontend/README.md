@@ -1,73 +1,89 @@
-# React + TypeScript + Vite
+# React Admin Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-featured admin panel built with [React Admin](https://marmelab.com/react-admin/) + [Vite](https://vitejs.dev/) for the **Redis NestJS Dashboard** backend.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Login** – authenticates against `POST /auth/login` and stores the JWT in `localStorage`
+- **Users** – read-only paginated DataGrid listing all users
+- **Transactions** – full CRUD DataGrid (list, show, create, edit, delete) with type/status/payment filters
+- **Dashboard** – live stats cards showing total users, verified users, and Bull queue job counts
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| | |
+|---|---|
+| Framework | [React Admin v5](https://marmelab.com/react-admin/) |
+| Build tool | [Vite](https://vitejs.dev/) |
+| Language | TypeScript |
+| UI library | MUI (Material UI, bundled with React Admin) |
+| Auth | Custom `authProvider` using JWT (`localStorage`) |
+| Data | Custom `dataProvider` talking to the NestJS REST API |
 
-## Expanding the ESLint configuration
+## Development
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+The frontend dev server (port `5173`) proxies API requests to the NestJS backend (port `3000`), so you need both running:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+```bash
+# Terminal 1 — start NestJS backend
+cd /path/to/laravel12-redis
+npm run start:dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Terminal 2 — start Vite dev server
+cd frontend
+npm install
+npm run dev
+# → http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Log in with any account registered via `POST /auth/register` or `POST /auth/login`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Production Build
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+From the **repo root**:
+
+```bash
+# Build admin panel only (outputs to public/admin/)
+npm run build:admin
+
+# Build everything (admin + NestJS TypeScript)
+npm run build:all
 ```
+
+The built admin panel is served by NestJS as static files at `http://localhost:3000/admin/`.
+
+## Project Structure
+
+```
+frontend/
+├── index.html
+├── package.json
+├── vite.config.ts           # Proxies /auth, /users, /transactions, etc. → localhost:3000
+├── tsconfig.json
+└── src/
+    ├── main.tsx             # React entry point
+    ├── App.tsx              # <Admin> with Resources
+    ├── providers/
+    │   ├── authProvider.ts  # login(), logout(), checkAuth(), getIdentity()
+    │   └── dataProvider.ts  # getList(), getOne(), create(), update(), delete()
+    └── resources/
+        ├── users.tsx        # <UserList> DataGrid
+        ├── transactions.tsx # <TransactionList/Show/Create/Edit>
+        └── dashboard.tsx    # Stats cards (users + queue)
+```
+
+## API Mapping
+
+The custom `dataProvider` maps React Admin calls to the NestJS REST API:
+
+| React Admin call | NestJS endpoint |
+|---|---|
+| `getList('users', ...)` | `GET /users?page=1&limit=20` |
+| `getOne('users', { id })` | `GET /users/:id` |
+| `getList('transactions', ...)` | `GET /transactions?page=1&limit=20&...filters` |
+| `getOne('transactions', { id })` | `GET /transactions/:id` |
+| `create('transactions', { data })` | `POST /transactions` |
+| `update('transactions', { id, data })` | `PUT /transactions/:id` |
+| `delete('transactions', { id })` | `DELETE /transactions/:id` |
+
+MongoDB `_id` fields are normalised to `id` so React Admin's DataGrid works correctly.
