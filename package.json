@@ -6,7 +6,10 @@
   "private": true,
   "license": "MIT",
   "scripts": {
+    "generate:module": "ts-node --project tsconfig.json scripts/generate-module.ts",
     "build": "nest build",
+    "build:admin": "cd frontend && npm run build",
+    "build:all": "npm run build:admin && npm run build",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

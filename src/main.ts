@@ -8,7 +8,10 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Serve static assets (dashboard HTML)
+  // Enable CORS for the React admin panel dev server
+  app.enableCors();
+
+  // Serve static assets (dashboard HTML + React admin panel)
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
   // Global validation pipe
@@ -38,6 +41,7 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`🚀 Application running on: http://localhost:${port}`);
   console.log(`📖 Swagger docs:            http://localhost:${port}/api/docs`);
+  console.log(`🖥️  React Admin Panel:       http://localhost:${port}/admin/`);
   console.log(`📊 Queue Dashboard:         http://localhost:${port}/dashboard/queue.html`);
   console.log(`👥 Users Dashboard:         http://localhost:${port}/dashboard/users.html`);
 }
