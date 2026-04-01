@@ -1,0 +1,41 @@
+name: Create reactnestjs branch and reset main
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  setup-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create reactnestjs branch from current main HEAD
+        run: |
+          MAIN_SHA=$(git rev-parse origin/main)
+          echo "Creating reactnestjs branch at $MAIN_SHA"
+          git checkout -b reactnestjs "$MAIN_SHA"
+          git push origin reactnestjs
+
+      - name: Reset main to 900e1806718ea40fdb67c4845ffc9dd28f9dabe0
+        run: |
+          git checkout -b temp-main origin/main
+          git reset --hard 900e1806718ea40fdb67c4845ffc9dd28f9dabe0
+          git push origin HEAD:refs/heads/main --force
+
+      - name: Summary
+        run: |
+          echo "✅ Done!"
+          echo "  - reactnestjs branch created at $(git rev-parse origin/reactnestjs)"
+          echo "  - main reset to $(git rev-parse origin/main)"
