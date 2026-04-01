@@ -1,7 +1,9 @@
 name: Create reactnestjs branch and reset main
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - copilot/reactnestjs
 
 permissions:
   contents: write
@@ -21,18 +23,30 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create reactnestjs branch at 22b49d0 (pre-workflow main HEAD)
+      - name: Create reactnestjs branch at 22b49d0 (if it does not already exist)
         run: |
-          # Point reactnestjs to the original main HEAD before any workflow commits
-          git checkout -b reactnestjs 22b49d0718ea40fdb67c4845ffc9dd28f9dabe0
-          git push origin reactnestjs
+          if git ls-remote --heads origin reactnestjs | grep -q reactnestjs; then
+            echo "reactnestjs branch already exists, skipping creation."
+          else
+            git checkout -b reactnestjs 22b49d0718ea40fdb67c4845ffc9dd28f9dabe0
+            git push origin reactnestjs
+            echo "reactnestjs branch created at 22b49d0718ea40fdb67c4845ffc9dd28f9dabe0"
+          fi
 
-      - name: Reset main to 900e1806718ea40fdb67c4845ffc9dd28f9dabe0
+      - name: Reset main to 900e180 (if not already there)
         run: |
-          git push origin 900e1806718ea40fdb67c4845ffc9dd28f9dabe0:refs/heads/main --force
+          CURRENT_MAIN=$(git rev-parse origin/main)
+          TARGET="900e1806718ea40fdb67c4845ffc9dd28f9dabe0"
+          if [ "$CURRENT_MAIN" = "$TARGET" ]; then
+            echo "main is already at $TARGET, skipping reset."
+          else
+            git push origin "${TARGET}:refs/heads/main" --force
+            echo "main reset to $TARGET"
+          fi
 
       - name: Summary
         run: |
           echo "✅ Done!"
-          echo "  - reactnestjs branch → $(git rev-parse origin/reactnestjs 2>/dev/null || echo 'see above')"
-          echo "  - main reset to 900e1806718ea40fdb67c4845ffc9dd28f9dabe0"
+          git fetch origin
+          echo "  - reactnestjs → $(git rev-parse origin/reactnestjs 2>/dev/null || echo 'not found')"
+          echo "  - main → $(git rev-parse origin/main)"
