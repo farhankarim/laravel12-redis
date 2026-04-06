@@ -8,6 +8,9 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^13.0",
+        "laravel/horizon": "^5.45",
+        "laravel/passport": "^13.7",
+        "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^4.2",
         "predis/predis": "^2.3"
