@@ -20,6 +20,7 @@ import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { LocalAuthGuard } from './local-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -62,6 +63,21 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('login/local')
+  @UseGuards(LocalAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Login via Passport local strategy (email + password form)',
+    description:
+      'Authenticates using the Passport `local` strategy. ' +
+      'Accepts `email` and `password` in the request body and returns a JWT.',
+  })
+  @ApiResponse({ status: 200, description: 'Login successful, returns JWT' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async loginLocal(@Request() req: any) {
+    return this.authService.loginWithUser(req.user);
   }
 
   @Get('profile')

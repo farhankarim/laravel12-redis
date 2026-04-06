@@ -8,6 +8,9 @@ A fully fledged **NestJS + MongoDB + Redis** application converted from the orig
 - **Redis pub/sub** – dashboard refresh signals broadcast to all connected clients
 - **JWT authentication** – protected API endpoints and dashboard pages
 - **Swagger API docs** – interactive at `/api/docs`
+- **Horizon (Bull Board)** – visual queue monitoring dashboard at `/horizon`
+- **Sanctum (Personal Access Tokens)** – database-backed API tokens as an alternative to short-lived JWTs
+- **Passport local strategy** – `passport-local` username/password authentication strategy
 
 ---
 
@@ -19,7 +22,8 @@ A fully fledged **NestJS + MongoDB + Redis** application converted from the orig
 | Language     | TypeScript                         |
 | Database     | MongoDB 7 (via Mongoose)           |
 | Queue        | Redis + [Bull](https://github.com/OptimalBits/bull) |
-| Auth         | Passport.js + JWT                  |
+| Auth         | Passport.js (JWT + Local) + Sanctum PAT |
+| Queue UI     | [Bull Board](https://github.com/felixmosh/bull-board) (Horizon equivalent) |
 | Email        | Nodemailer                         |
 | Real-time    | Socket.io (WebSockets)             |
 | API Docs     | Swagger / OpenAPI 3                |
@@ -96,13 +100,48 @@ This repository ships with a full **Dev Container** configuration (`.devcontaine
 
 Interactive Swagger docs are available at **`/api/docs`** once the app is running.
 
-### Authentication
+### Authentication (Passport)
 
-| Method | Endpoint         | Description                  |
-|--------|-----------------|------------------------------|
-| POST   | `/auth/register` | Register a new user          |
-| POST   | `/auth/login`    | Login, returns `access_token`|
-| GET    | `/auth/profile`  | Get current user (JWT)       |
+| Method | Endpoint            | Description                                         |
+|--------|---------------------|-----------------------------------------------------|
+| POST   | `/auth/register`    | Register a new user                                 |
+| POST   | `/auth/login`       | Login with email/password, returns `access_token`   |
+| POST   | `/auth/login/local` | Login via Passport `local` strategy (same payload)  |
+| GET    | `/auth/profile`     | Get current user (JWT required)                     |
+
+`POST /auth/login` and `POST /auth/login/local` both accept `{ "email": "...", "password": "..." }` and return the same `{ access_token, user }` response. The `/local` variant goes through the [Passport local strategy](http://www.passportjs.org/packages/passport-local/) middleware pipeline.
+
+### Sanctum – Personal Access Tokens
+
+Long-lived, database-backed tokens as an alternative to short-lived JWTs (inspired by [Laravel Sanctum](https://laravel.com/docs/sanctum)).
+
+| Method | Endpoint            | Auth? | Description                          |
+|--------|---------------------|-------|--------------------------------------|
+| POST   | `/auth/tokens`      | JWT ✓ | Create a personal access token       |
+| GET    | `/auth/tokens`      | JWT ✓ | List tokens for current user         |
+| DELETE | `/auth/tokens/:id`  | JWT ✓ | Revoke a token                       |
+
+**Create a token:**
+```bash
+curl -X POST http://localhost:3000/auth/tokens \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "ci-pipeline", "abilities": ["read"], "expiresAt": "2027-01-01T00:00:00Z"}'
+```
+
+Response (plain token shown **once** – store it securely):
+```json
+{
+  "token": "<id>|<secret>",
+  "id": "...",
+  "name": "ci-pipeline",
+  "abilities": ["read"],
+  "expiresAt": "2027-01-01T00:00:00.000Z",
+  "createdAt": "..."
+}
+```
+
+The token format is `{mongoId}|{secret}` (mirrors Laravel Sanctum). The ID portion enables O(1) MongoDB lookup during validation; only the matching record's bcrypt hash is compared.
 
 ### Users
 
@@ -164,6 +203,46 @@ Events emitted by server:
 
 ---
 
+## Horizon – Bull Board Queue Dashboard
+
+[Bull Board](https://github.com/felixmosh/bull-board) provides a real-time visual queue dashboard equivalent to [Laravel Horizon](https://laravel.com/docs/horizon).
+
+**URL:** `http://localhost:3000/horizon`
+
+All Bull queues defined in `QUEUE_NAMES` are automatically registered and displayed with job counts, throughput, and individual job details.
+
+> **Note:** The `/horizon` route is currently open for local development. In production, protect it with middleware (IP allowlist, basic auth, or session guard).
+
+---
+
+## Sanctum – Personal Access Tokens
+
+Inspired by [Laravel Sanctum](https://laravel.com/docs/sanctum), the `SanctumModule` issues long-lived, database-backed personal access tokens as a complement to the short-lived JWT flow.
+
+**How it works:**
+1. Obtain a JWT via `POST /auth/login`.
+2. Exchange it for a PAT via `POST /auth/tokens` (include `name`, optional `abilities`, optional `expiresAt`).
+3. The plain-text token is returned **once** – store it in a secret manager or `.env`.
+4. Use the PAT as a `Bearer` token to call any protected endpoint.
+5. Revoke it at any time via `DELETE /auth/tokens/:id`.
+
+Tokens are stored hashed (bcrypt) in MongoDB; the hash is never exposed.
+
+---
+
+## Passport Strategies
+
+The application uses [NestJS Passport](https://docs.nestjs.com/security/authentication) with two strategies:
+
+| Strategy   | Guard             | Endpoint             | Description                              |
+|------------|-------------------|----------------------|------------------------------------------|
+| `jwt`      | `JwtAuthGuard`    | All protected routes | Validates `Authorization: Bearer <JWT>` |
+| `local`    | `LocalAuthGuard`  | `POST /auth/login/local` | Validates email + password via `passport-local` |
+
+Both strategies are registered in `AuthModule`. Additional OAuth strategies (Google, GitHub, etc.) can be added by installing the corresponding `passport-*` package and creating a new `Strategy` + `Guard` pair.
+
+---
+
 ## Queue Architecture
 
 ```
@@ -190,15 +269,25 @@ POST /queue/email-verifications
 
 ```
 src/
-├── main.ts                  # Bootstrap
+├── main.ts                  # Bootstrap (Bull Board mounted here)
 ├── app.module.ts            # Root module
-├── auth/                    # JWT authentication
+├── auth/                    # JWT + Local Passport authentication
 │   ├── auth.controller.ts
 │   ├── auth.service.ts
 │   ├── auth.module.ts
 │   ├── jwt.strategy.ts
 │   ├── jwt-auth.guard.ts
+│   ├── local.strategy.ts    # Passport local strategy
+│   ├── local-auth.guard.ts  # Guard for local strategy
 │   └── dto/login.dto.ts
+├── sanctum/                 # Personal Access Tokens (Sanctum)
+│   ├── sanctum.module.ts
+│   ├── sanctum.service.ts
+│   ├── sanctum.controller.ts
+│   ├── schemas/
+│   │   └── personal-access-token.schema.ts
+│   └── dto/
+│       └── create-token.dto.ts
 ├── users/                   # User management
 │   ├── users.controller.ts
 │   ├── users.service.ts
