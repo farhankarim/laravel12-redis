@@ -21,6 +21,7 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
+        cors: true,
         origin: isCodespaces ? `https://${codespacesHost}` : 'http://127.0.0.1:5173',
         hmr: {
             host: isCodespaces ? codespacesHost : '127.0.0.1',
