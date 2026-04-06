@@ -184,8 +184,12 @@ class QueueGenerateStudentsCommand extends Command
             $deptId = $departmentIds[$idx % $deptCount];
             $key = "{$deptId}-{$instrId}";
             if (! isset($seen[$key])) {
-                $rows[] = ['department_id' => $deptId, 'instructor_id' => $instrId,
-                    'created_at' => $timestamp, 'updated_at' => $timestamp];
+                $rows[] = [
+                    'department_id' => $deptId,
+                    'instructor_id' => $instrId,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
                 $seen[$key] = true;
             }
 
@@ -193,8 +197,12 @@ class QueueGenerateStudentsCommand extends Command
             $deptId2 = $departmentIds[($idx + (int) ceil($deptCount / 2)) % $deptCount];
             $key2 = "{$deptId2}-{$instrId}";
             if ($deptId2 !== $deptId && ! isset($seen[$key2])) {
-                $rows[] = ['department_id' => $deptId2, 'instructor_id' => $instrId,
-                    'created_at' => $timestamp, 'updated_at' => $timestamp];
+                $rows[] = [
+                    'department_id' => $deptId2,
+                    'instructor_id' => $instrId,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
                 $seen[$key2] = true;
             }
         }
@@ -262,8 +270,12 @@ class QueueGenerateStudentsCommand extends Command
 
         foreach ($courseIds as $idx => $courseId) {
             $instrId = $instructorIds[$idx % $instrCount];
-            $rows[] = ['instructor_id' => $instrId, 'course_id' => $courseId,
-                'created_at' => $timestamp, 'updated_at' => $timestamp];
+            $rows[] = [
+                'instructor_id' => $instrId,
+                'course_id' => $courseId,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
         }
 
         foreach (array_chunk($rows, 1000) as $batch) {
@@ -288,9 +300,14 @@ class QueueGenerateStudentsCommand extends Command
 
             $key = "{$courseId}-{$classroomId}-{$day}";
             if (! isset($seen[$key])) {
-                $rows[] = ['course_id' => $courseId, 'classroom_id' => $classroomId,
-                    'day_of_week' => $day, 'start_time' => $time,
-                    'created_at' => $timestamp, 'updated_at' => $timestamp];
+                $rows[] = [
+                    'course_id' => $courseId,
+                    'classroom_id' => $classroomId,
+                    'day_of_week' => $day,
+                    'start_time' => $time,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
                 $seen[$key] = true;
             }
         }
