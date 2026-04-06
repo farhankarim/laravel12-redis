@@ -31,5 +31,12 @@ export default defineConfig({
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },
+        proxy: {
+            // Forward all non-Vite requests to the Laravel dev server
+            '^(?!/@vite|/resources|/@id|/node_modules)': {
+                target: 'http://127.0.0.1:8000',
+                changeOrigin: true,
+            },
+        },
     },
 });
