@@ -1,12 +1,13 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import {
   CContainer,
   CSidebar,
   CSidebarBrand,
   CSidebarNav,
   CNavItem,
+  CNavLink,
   CNavTitle,
 } from '@coreui/react';
 import '@coreui/coreui/dist/css/coreui.min.css';
@@ -26,13 +27,25 @@ function App() {
           <CSidebarBrand>University</CSidebarBrand>
           <CSidebarNav>
             <CNavTitle>Entities</CNavTitle>
-            <CNavItem href="/university/students">Students</CNavItem>
-            <CNavItem href="/university/courses">Courses</CNavItem>
-            <CNavItem href="/university/instructors">Instructors</CNavItem>
-            <CNavItem href="/university/classrooms">Classrooms</CNavItem>
-            <CNavItem href="/university/departments">Departments</CNavItem>
+            <CNavItem>
+              <CNavLink component={NavLink} to="/students">Students</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink component={NavLink} to="/courses">Courses</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink component={NavLink} to="/instructors">Instructors</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink component={NavLink} to="/classrooms">Classrooms</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink component={NavLink} to="/departments">Departments</CNavLink>
+            </CNavItem>
             <CNavTitle>Reports</CNavTitle>
-            <CNavItem href="/university/report">Master Report</CNavItem>
+            <CNavItem>
+              <CNavLink component={NavLink} to="/report">Master Report</CNavLink>
+            </CNavItem>
           </CSidebarNav>
         </CSidebar>
         <CContainer className="p-4" fluid>

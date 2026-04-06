@@ -16,8 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Set TRUSTED_PROXIES in your environment to a comma-separated list of
         // upstream proxy IP addresses (e.g. "10.0.0.1,10.0.0.2") or "*" when
         // your infrastructure guarantees only real proxies send these headers.
+        // 127.0.0.1 is the default for local development (Vite dev-server proxy).
+        $trustedProxies = array_values(array_filter(
+            array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', ''))),
+        ));
         $middleware->trustProxies(
-            at: explode(',', (string) env('TRUSTED_PROXIES', '')),
+            at: $trustedProxies ?: null,
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
