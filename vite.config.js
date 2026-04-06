@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
 
 const isCodespaces = Boolean(process.env.CODESPACE_NAME && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN);
 const codespacesHost = isCodespaces
@@ -10,10 +11,11 @@ const codespacesHost = isCodespaces
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/university/main.jsx'],
             refresh: true,
         }),
         tailwindcss(),
+        react(),
     ],
     server: {
         host: '0.0.0.0',
