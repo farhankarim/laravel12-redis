@@ -1,75 +1,102 @@
-<section wire:poll.10s="loadSummary" class="space-y-6">
-    <div class="flex items-center justify-between">
+<div wire:poll.10s="loadSummary">
+    <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h2 class="text-xl font-semibold">Redis Queue Summary</h2>
-            <p class="text-sm text-gray-600">Updated: {{ $summary['updated_at'] ?? 'n/a' }}</p>
+            <h4 class="mb-1">Redis Queue Summary</h4>
+            <small class="text-body-secondary">Updated: {{ $summary['updated_at'] ?? 'n/a' }}</small>
         </div>
-
-        <button
-            wire:click="refreshSummary"
-            type="button"
-            class="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white"
-        >
+        <button wire:click="refreshSummary" type="button" class="btn btn-dark btn-sm">
             Refresh via Redis Pub/Sub
         </button>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-3">
-        <div class="rounded border bg-white p-4">
-            <p class="text-sm text-gray-600">Redis Pending</p>
-            <p class="text-2xl font-semibold">{{ $summary['totals']['redis_pending'] ?? 0 }}</p>
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="fs-4 fw-semibold">{{ $summary['totals']['redis_pending'] ?? 0 }}</div>
+                    <div>Redis Pending</div>
+                </div>
+            </div>
         </div>
-        <div class="rounded border bg-white p-4">
-            <p class="text-sm text-gray-600">Redis Reserved</p>
-            <p class="text-2xl font-semibold">{{ $summary['totals']['redis_reserved'] ?? 0 }}</p>
+        <div class="col-sm-6 col-xl-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="fs-4 fw-semibold">{{ $summary['totals']['redis_reserved'] ?? 0 }}</div>
+                    <div>Redis Reserved</div>
+                </div>
+            </div>
         </div>
-        <div class="rounded border bg-white p-4">
-            <p class="text-sm text-gray-600">Redis Delayed</p>
-            <p class="text-2xl font-semibold">{{ $summary['totals']['redis_delayed'] ?? 0 }}</p>
+        <div class="col-sm-6 col-xl-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="fs-4 fw-semibold">{{ $summary['totals']['redis_delayed'] ?? 0 }}</div>
+                    <div>Redis Delayed</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <div class="fs-4 fw-semibold">{{ $summary['totals']['failed_jobs'] ?? 0 }}</div>
+                    <div>Failed Jobs</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="card bg-body-secondary">
+                <div class="card-body">
+                    <div class="fs-4 fw-semibold">{{ $summary['totals']['batch_total_jobs'] ?? 0 }}</div>
+                    <div>Batch Total Jobs</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="card bg-body-secondary">
+                <div class="card-body">
+                    <div class="fs-4 fw-semibold">{{ $summary['totals']['batch_pending_jobs'] ?? 0 }}</div>
+                    <div>Batch Pending Jobs</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-3">
-        <div class="rounded border bg-white p-4">
-            <p class="text-sm text-gray-600">Failed Jobs</p>
-            <p class="text-2xl font-semibold">{{ $summary['totals']['failed_jobs'] ?? 0 }}</p>
-        </div>
-        <div class="rounded border bg-white p-4">
-            <p class="text-sm text-gray-600">Batch Total Jobs</p>
-            <p class="text-2xl font-semibold">{{ $summary['totals']['batch_total_jobs'] ?? 0 }}</p>
-        </div>
-        <div class="rounded border bg-white p-4">
-            <p class="text-sm text-gray-600">Batch Pending Jobs</p>
-            <p class="text-2xl font-semibold">{{ $summary['totals']['batch_pending_jobs'] ?? 0 }}</p>
+    <div class="card">
+        <div class="card-header fw-semibold">Per-Queue Breakdown</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Queue</th>
+                            <th>DB Jobs</th>
+                            <th>Redis Pending</th>
+                            <th>Redis Reserved</th>
+                            <th>Redis Delayed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse (($summary['queues'] ?? []) as $queue)
+                            <tr>
+                                <td class="fw-medium">{{ $queue['name'] }}</td>
+                                <td>{{ $queue['database_jobs'] }}</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ $queue['redis_pending'] }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info text-dark">{{ $queue['redis_reserved'] }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">{{ $queue['redis_delayed'] }}</span>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="text-center text-body-secondary py-4">No queue rows yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-
-    <div class="overflow-x-auto rounded border bg-white">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50 text-left text-gray-600">
-                <tr>
-                    <th class="px-4 py-3 font-medium">Queue</th>
-                    <th class="px-4 py-3 font-medium">DB jobs</th>
-                    <th class="px-4 py-3 font-medium">Redis pending</th>
-                    <th class="px-4 py-3 font-medium">Redis reserved</th>
-                    <th class="px-4 py-3 font-medium">Redis delayed</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @forelse (($summary['queues'] ?? []) as $queue)
-                    <tr>
-                        <td class="px-4 py-3 font-medium">{{ $queue['name'] }}</td>
-                        <td class="px-4 py-3">{{ $queue['database_jobs'] }}</td>
-                        <td class="px-4 py-3">{{ $queue['redis_pending'] }}</td>
-                        <td class="px-4 py-3">{{ $queue['redis_reserved'] }}</td>
-                        <td class="px-4 py-3">{{ $queue['redis_delayed'] }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">No queue rows yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</section>
+</div>
