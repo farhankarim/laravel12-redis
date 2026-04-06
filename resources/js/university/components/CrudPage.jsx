@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import {
   CButton,
   CCard,
@@ -45,10 +46,20 @@ export default function CrudPage({ title, apiPath, fields, displayColumns }) {
 
   const handleEdit = (item) => { setEditing(item.id); setForm(item); setError(''); setSuccess(''); };
   const handleDelete = (id) => {
-    if (!window.confirm('Delete this record?')) return;
-    axios.delete(`${apiPath}/${id}`)
-      .then(() => { setSuccess('Deleted!'); fetchAll(); })
-      .catch(() => setError('Delete failed.'));
+    Swal.fire({
+      title: 'Delete this record?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it',
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      axios.delete(`${apiPath}/${id}`)
+        .then(() => { setSuccess('Deleted!'); fetchAll(); })
+        .catch(() => setError('Delete failed.'));
+    });
   };
 
   return (
