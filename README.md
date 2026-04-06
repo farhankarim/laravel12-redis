@@ -132,7 +132,7 @@ curl -X POST http://localhost:3000/auth/tokens \
 Response (plain token shown **once** – store it securely):
 ```json
 {
-  "token": "<plain-text-token>",
+  "token": "<id>|<secret>",
   "id": "...",
   "name": "ci-pipeline",
   "abilities": ["read"],
@@ -140,6 +140,8 @@ Response (plain token shown **once** – store it securely):
   "createdAt": "..."
 }
 ```
+
+The token format is `{mongoId}|{secret}` (mirrors Laravel Sanctum). The ID portion enables O(1) MongoDB lookup during validation; only the matching record's bcrypt hash is compared.
 
 ### Users
 
