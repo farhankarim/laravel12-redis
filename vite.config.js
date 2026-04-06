@@ -21,6 +21,7 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
+        cors: true,
         origin: isCodespaces ? `https://${codespacesHost}` : 'http://127.0.0.1:5173',
         hmr: {
             host: isCodespaces ? codespacesHost : '127.0.0.1',
@@ -30,6 +31,19 @@ export default defineConfig({
         },
         watch: {
             ignored: ['**/storage/framework/views/**'],
+        },
+        proxy: {
+            // Forward all non-Vite requests to the Laravel dev server.
+            // X-Forwarded-* headers let Laravel generate correct redirect URLs
+            // instead of falling back to APP_URL / the internal 127.0.0.1 host.
+            '^(?!/@vite|/resources|/@id|/node_modules)': {
+                target: 'http://127.0.0.1:8000',
+                changeOrigin: true,
+                headers: {
+                    'X-Forwarded-Host': isCodespaces ? codespacesHost : '127.0.0.1:5173',
+                    'X-Forwarded-Proto': isCodespaces ? 'https' : 'http',
+                },
+            },
         },
     },
 });
