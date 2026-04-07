@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { flushSync } from 'react-dom';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import {
@@ -26,7 +27,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await axios.post('/api/auth/register', form);
-      saveAuth(res.data.token, res.data.user);
+      flushSync(() => saveAuth(res.data.token, res.data.user));
       navigate('/students');
     } catch (err) {
       const data = err.response?.data;

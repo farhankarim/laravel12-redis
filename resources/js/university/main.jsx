@@ -35,7 +35,7 @@ function AppLayout() {
       // token may already be invalid
     }
     clearAuth();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   if (!isAuthenticated) {
@@ -89,6 +89,9 @@ function AppLayout() {
           <Route path="/departments" element={<DepartmentsPage />} />
           <Route path="/report"      element={<ReportPage />} />
           <Route path="/"            element={<StudentsPage />} />
+          <Route path="/login"       element={<Navigate to="/students" replace />} />
+          <Route path="/register"    element={<Navigate to="/students" replace />} />
+          <Route path="*"            element={<Navigate to="/" replace />} />
         </Routes>
       </CContainer>
     </div>
