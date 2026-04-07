@@ -25,6 +25,6 @@ Route::middleware(['auth'])->group(function () {
 // Minimal login stub so the auth middleware can redirect unauthenticated
 // requests without throwing a RouteNotFoundException.
 // Replace this with a real authentication system (e.g. Laravel Breeze).
-Route::get('/login', fn () => response('Unauthorized — please log in.', 401))->name('login');
+Route::get('/login', fn () => redirect('/university/login'))->name('login');
 
 Route::get('/university/{any?}', fn() => view('university'))->where('any', '.*');
