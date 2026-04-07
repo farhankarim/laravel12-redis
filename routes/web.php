@@ -22,9 +22,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/users', UsersSummaryDashboard::class)->name('dashboard.users');
 });
 
-// Minimal login stub so the auth middleware can redirect unauthenticated
-// requests without throwing a RouteNotFoundException.
-// Replace this with a real authentication system (e.g. Laravel Breeze).
-Route::get('/login', fn () => redirect('/university/login'))->name('login');
+// The SPA's login screen is the canonical 'login' route so that the auth
+// middleware redirects unauthenticated requests directly to the React login
+// page without an extra intermediate hop.
+Route::get('/university/login', fn () => view('university'))->name('login');
+
+// Compatibility redirect: /login → /university/login.
+// Uses a path-absolute Location header so the browser resolves it against
+// the same origin (scheme + host + port) it already used, avoiding any
+// cross-port or cross-scheme redirect regardless of how the app is accessed.
+Route::get('/login', fn () => redirect()->away('/university/login'));
 
 Route::get('/university/{any?}', fn() => view('university'))->where('any', '.*');
