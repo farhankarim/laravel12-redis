@@ -36,7 +36,7 @@ export default defineConfig({
             // Forward all non-Vite requests to the Laravel dev server.
             // X-Forwarded-* headers let Laravel generate correct redirect URLs
             // instead of falling back to APP_URL / the internal 127.0.0.1 host.
-            '^(?!/@vite|/resources|/@id|/node_modules)': {
+            '^(?!/@|/resources|/node_modules)': {
                 target: 'http://127.0.0.1:8000',
                 changeOrigin: true,
                 headers: {
