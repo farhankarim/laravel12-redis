@@ -55,23 +55,23 @@ function AppLayout() {
         <CSidebarNav>
           <CNavTitle>Entities</CNavTitle>
           <CNavItem>
-            <CNavLink component={NavLink} to="/students">Students</CNavLink>
+            <CNavLink as={NavLink} to="/students">Students</CNavLink>
           </CNavItem>
           <CNavItem>
-            <CNavLink component={NavLink} to="/courses">Courses</CNavLink>
+            <CNavLink as={NavLink} to="/courses">Courses</CNavLink>
           </CNavItem>
           <CNavItem>
-            <CNavLink component={NavLink} to="/instructors">Instructors</CNavLink>
+            <CNavLink as={NavLink} to="/instructors">Instructors</CNavLink>
           </CNavItem>
           <CNavItem>
-            <CNavLink component={NavLink} to="/classrooms">Classrooms</CNavLink>
+            <CNavLink as={NavLink} to="/classrooms">Classrooms</CNavLink>
           </CNavItem>
           <CNavItem>
-            <CNavLink component={NavLink} to="/departments">Departments</CNavLink>
+            <CNavLink as={NavLink} to="/departments">Departments</CNavLink>
           </CNavItem>
           <CNavTitle>Reports</CNavTitle>
           <CNavItem>
-            <CNavLink component={NavLink} to="/report">Master Report</CNavLink>
+            <CNavLink as={NavLink} to="/report">Master Report</CNavLink>
           </CNavItem>
           <CNavTitle>Account</CNavTitle>
           <CNavItem className="px-3 py-2">
