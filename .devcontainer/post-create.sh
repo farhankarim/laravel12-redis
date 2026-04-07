@@ -61,5 +61,13 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
+# In Codespaces the user accesses the app through the Vite dev-server at port
+# 5173. Update APP_URL so Artisan CLI commands (queue workers, notifications,
+# etc.) also generate correct URLs pointing at the Codespaces host.
+if [[ -n "${CODESPACE_NAME:-}" && -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]]; then
+  CODESPACES_APP_URL="https://${CODESPACE_NAME}-5173.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+  sed -i "s|APP_URL=.*|APP_URL=${CODESPACES_APP_URL}|" .env
+fi
+
 php artisan key:generate --force
 php artisan migrate --force
