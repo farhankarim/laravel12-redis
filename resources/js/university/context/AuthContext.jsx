@@ -1,21 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken]   = useState(() => localStorage.getItem('auth_token'));
+  const [token, setToken]   = useState(() => {
+    const t = localStorage.getItem('auth_token');
+    if (t) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${t}`;
+    }
+    return t;
+  });
   const [user, setUser]     = useState(() => {
     try { return JSON.parse(localStorage.getItem('auth_user')); } catch { return null; }
   });
-
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
 
   const saveAuth = (newToken, newUser) => {
     localStorage.setItem('auth_token', newToken);
