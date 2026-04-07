@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { flushSync } from 'react-dom';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   CCard,
   CCardBody,
@@ -16,7 +15,6 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 export default function RegisterPage() {
   const { saveAuth } = useAuth();
-  const navigate = useNavigate();
   const [form, setForm]     = useState({ name: '', email: '', password: '', password_confirmation: '' });
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,8 +25,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await axios.post('/api/auth/register', form);
-      flushSync(() => saveAuth(res.data.token, res.data.user));
-      navigate('/students');
+      saveAuth(res.data.token, res.data.user);
     } catch (err) {
       const data = err.response?.data;
       const msg  = data?.errors
