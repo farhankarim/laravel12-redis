@@ -20,6 +20,653 @@ A full-featured Laravel 12 starter that demonstrates:
 - **CoreUI React SPA** served via **Vite** for the frontend
 - **University Management System** sample CRUD demonstrating 5-entity many-to-many relationships via intersection tables
 
+---
+
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Setup: Local PC](#setup-local-pc)
+  - [Linux (Ubuntu / Debian)](#linux-ubuntu--debian)
+  - [macOS](#macos)
+  - [Windows (WSL 2)](#windows-wsl-2)
+- [Setup: GitHub Codespaces](#setup-github-codespaces)
+- [Setup: AWS EC2](#setup-aws-ec2)
+- [Setup: DigitalOcean Droplet](#setup-digitalocean-droplet)
+- [Environment Variables Reference](#environment-variables-reference)
+- [Running the Application](#running-the-application)
+- [Feature Docs](#feature-docs)
+
+---
+
+## Requirements
+
+| Dependency | Version |
+|---|---|
+| PHP | 8.2 or 8.3 |
+| Composer | 2.x |
+| Node.js | 20 or 22 |
+| npm | 10+ |
+| MySQL / MariaDB | 8.0+ / 10.6+ |
+| Redis | 6.0+ |
+
+---
+
+## Setup: Local PC
+
+### Linux (Ubuntu / Debian)
+
+#### 1. Install system dependencies
+
+```bash
+sudo apt update && sudo apt upgrade -y
+
+# PHP 8.3 + extensions
+sudo apt install -y software-properties-common
+sudo add-apt-repository ppa:ondrej/php -y
+sudo apt update
+sudo apt install -y php8.3 php8.3-cli php8.3-fpm php8.3-mysql php8.3-xml \
+  php8.3-mbstring php8.3-curl php8.3-zip php8.3-bcmath php8.3-tokenizer \
+  php8.3-pdo
+
+# Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# Node.js 22 (via NodeSource)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# MySQL
+sudo apt install -y default-mysql-server default-mysql-client
+sudo service mysql start
+
+# Redis
+sudo apt install -y redis-server
+sudo service redis-server start
+```
+
+#### 2. Create the database
+
+```bash
+sudo mysql <<'SQL'
+CREATE DATABASE IF NOT EXISTS `laravel` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'laravel'@'localhost' IDENTIFIED BY 'laravel';
+GRANT ALL PRIVILEGES ON `laravel`.* TO 'laravel'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+```
+
+#### 3. Clone and configure the project
+
+```bash
+git clone https://github.com/farhankarim/laravel12-redis.git
+cd laravel12-redis
+
+cp .env.example .env
+# Edit .env if your database credentials differ from the defaults
+```
+
+#### 4. Install dependencies and run migrations
+
+```bash
+composer install
+php artisan key:generate
+php artisan migrate
+
+npm install
+npm run build
+```
+
+#### 5. Start the development servers
+
+```bash
+composer run dev
+```
+
+This starts Laravel (`php artisan serve`), the Vite dev-server, and the queue worker concurrently. Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+### macOS
+
+#### 1. Install system dependencies
+
+```bash
+# Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# PHP 8.3
+brew install php@8.3
+echo 'export PATH="/opt/homebrew/opt/php@8.3/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# Node.js 22
+brew install node@22
+echo 'export PATH="/opt/homebrew/opt/node@22/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# MySQL
+brew install mysql
+brew services start mysql
+
+# Redis
+brew install redis
+brew services start redis
+```
+
+#### 2. Create the database
+
+```bash
+mysql -u root <<'SQL'
+CREATE DATABASE IF NOT EXISTS `laravel` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'laravel'@'localhost' IDENTIFIED BY 'laravel';
+GRANT ALL PRIVILEGES ON `laravel`.* TO 'laravel'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+```
+
+#### 3. Clone and configure the project
+
+```bash
+git clone https://github.com/farhankarim/laravel12-redis.git
+cd laravel12-redis
+
+cp .env.example .env
+```
+
+#### 4. Install dependencies and run migrations
+
+```bash
+composer install
+php artisan key:generate
+php artisan migrate
+
+npm install
+npm run build
+```
+
+#### 5. Start the development servers
+
+```bash
+composer run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+### Windows (WSL 2)
+
+#### 1. Enable WSL 2 and install Ubuntu
+
+Open PowerShell as Administrator:
+
+```powershell
+wsl --install
+# Restart when prompted, then open the Ubuntu app from the Start menu
+```
+
+#### 2. Follow the Linux (Ubuntu) instructions above
+
+All subsequent steps are identical to the [Linux section](#linux-ubuntu--debian). Run every command inside the Ubuntu WSL terminal.
+
+> **Tip:** Open your project in VS Code with `code .` from the WSL terminal — VS Code detects WSL automatically.
+
+---
+
+## Setup: GitHub Codespaces
+
+The repository ships with a fully automated `.devcontainer` configuration. Everything — PHP, Node, MySQL, Redis — is installed and configured automatically.
+
+#### 1. Open in Codespaces
+
+Click **Code → Codespaces → Create codespace on main** (or your branch) on the GitHub repository page.
+
+GitHub will:
+- Provision a container based on `mcr.microsoft.com/devcontainers/php:1-8.3-bookworm`
+- Install Node 22, MySQL, and Redis via `post-create.sh`
+- Create the `laravel` database, user, and password
+- Copy `.env.example` to `.env`
+- Set `APP_URL` to your Codespace's forwarded URL
+- Run `php artisan key:generate` and `php artisan migrate`
+
+#### 2. Install project dependencies
+
+Open the integrated terminal and run:
+
+```bash
+composer install
+npm install
+```
+
+#### 3. Start the development servers
+
+```bash
+composer run dev
+```
+
+Vite starts on port **5173**. GitHub Codespaces automatically forwards this port. Click the **Open in Browser** notification or find the forwarded URL in the **Ports** tab.
+
+> The app is accessed through the Vite proxy (port 5173), which forwards Laravel API requests to `php artisan serve` on port 8000. All generated URLs — redirects, signed mail links — are automatically rewritten to the Codespaces hostname.
+
+#### Ports forwarded by the devcontainer
+
+| Port | Service |
+|---|---|
+| 5173 | Vite dev-server (main entry point) |
+| 8000 | Laravel (accessed via Vite proxy) |
+| 3306 | MySQL |
+
+---
+
+## Setup: AWS EC2
+
+The steps below target an **Ubuntu 24.04 LTS** instance. A `t3.small` (2 vCPU, 2 GB RAM) or larger is recommended for development; use `t3.medium` or larger for production workloads.
+
+#### 1. Launch an EC2 instance
+
+1. Go to **EC2 → Launch Instance** in the AWS console.
+2. Choose **Ubuntu Server 24.04 LTS (HVM), SSD Volume Type**.
+3. Select instance type (e.g., `t3.small`).
+4. Under **Key pair**, create or select an existing key pair (you'll need the `.pem` file to SSH in).
+5. Under **Network settings → Security group**, allow inbound traffic on:
+   - **SSH** (port 22) — your IP only
+   - **HTTP** (port 80) — `0.0.0.0/0`
+   - **HTTPS** (port 443) — `0.0.0.0/0`
+   - **Custom TCP 8000** — your IP (for direct Artisan serve, dev only)
+6. Click **Launch Instance**.
+
+#### 2. SSH into the instance
+
+```bash
+chmod 400 your-key.pem
+ssh -i your-key.pem ubuntu@<EC2-PUBLIC-IP>
+```
+
+#### 3. Install system dependencies
+
+```bash
+sudo apt update && sudo apt upgrade -y
+
+# PHP 8.3
+sudo apt install -y software-properties-common
+sudo add-apt-repository ppa:ondrej/php -y
+sudo apt update
+sudo apt install -y php8.3 php8.3-cli php8.3-fpm php8.3-mysql php8.3-xml \
+  php8.3-mbstring php8.3-curl php8.3-zip php8.3-bcmath php8.3-tokenizer
+
+# Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# Node.js 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# MySQL
+sudo apt install -y mysql-server
+sudo systemctl enable --now mysql
+
+# Redis
+sudo apt install -y redis-server
+sudo systemctl enable --now redis-server
+
+# Nginx (optional, for production)
+sudo apt install -y nginx
+sudo systemctl enable --now nginx
+```
+
+#### 4. Secure MySQL and create the database
+
+```bash
+sudo mysql_secure_installation   # follow prompts
+
+sudo mysql <<'SQL'
+CREATE DATABASE IF NOT EXISTS `laravel` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'laravel'@'localhost' IDENTIFIED BY 'StrongPassword123!';
+GRANT ALL PRIVILEGES ON `laravel`.* TO 'laravel'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+```
+
+#### 5. Deploy the application
+
+```bash
+cd /var/www
+sudo git clone https://github.com/farhankarim/laravel12-redis.git
+sudo chown -R $USER:www-data laravel12-redis
+cd laravel12-redis
+
+cp .env.example .env
+# Edit .env — update DB_PASSWORD and APP_URL (your server's IP or domain)
+nano .env
+```
+
+Key `.env` values to update:
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=http://<YOUR-EC2-PUBLIC-IP>
+
+DB_HOST=127.0.0.1
+DB_DATABASE=laravel
+DB_USERNAME=laravel
+DB_PASSWORD=StrongPassword123!
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+
+TRUSTED_PROXIES=*
+```
+
+```bash
+composer install --optimize-autoloader --no-dev
+php artisan key:generate
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+npm install
+npm run build
+```
+
+#### 6. Configure Nginx
+
+```bash
+sudo nano /etc/nginx/sites-available/laravel
+```
+
+Paste the following (replace `<YOUR-EC2-PUBLIC-IP>` with your IP or domain):
+
+```nginx
+server {
+    listen 80;
+    server_name <YOUR-EC2-PUBLIC-IP>;
+    root /var/www/laravel12-redis/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Fix storage permissions
+sudo chown -R www-data:www-data /var/www/laravel12-redis/storage
+sudo chown -R www-data:www-data /var/www/laravel12-redis/bootstrap/cache
+sudo chmod -R 775 /var/www/laravel12-redis/storage
+```
+
+#### 7. Run the queue worker (production)
+
+Use a process manager to keep the worker alive:
+
+```bash
+sudo apt install -y supervisor
+
+sudo nano /etc/supervisor/conf.d/laravel-worker.conf
+```
+
+```ini
+[program:laravel-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/laravel12-redis/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/www/laravel12-redis/storage/logs/worker.log
+stopwaitsecs=3600
+```
+
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start laravel-worker:*
+```
+
+---
+
+## Setup: DigitalOcean Droplet
+
+#### 1. Create a Droplet
+
+1. Log in to [DigitalOcean](https://cloud.digitalocean.com).
+2. Click **Create → Droplets**.
+3. Choose **Ubuntu 24.04 (LTS) x64**.
+4. Select a plan — **Basic / Regular** with **2 GB RAM / 1 vCPU** ($12/mo) is sufficient for development; use **2 vCPU / 4 GB** for production.
+5. Add your **SSH key** (or set a root password).
+6. Click **Create Droplet**.
+
+#### 2. Configure firewall (recommended)
+
+In the DigitalOcean dashboard go to **Networking → Firewalls → Create Firewall**:
+
+| Type | Protocol | Port | Source |
+|---|---|---|---|
+| SSH | TCP | 22 | Your IP |
+| HTTP | TCP | 80 | All IPv4/IPv6 |
+| HTTPS | TCP | 443 | All IPv4/IPv6 |
+
+Assign the firewall to your Droplet.
+
+#### 3. SSH into the Droplet
+
+```bash
+ssh root@<DROPLET-IP>
+```
+
+#### 4. Install system dependencies
+
+Same commands as the [AWS EC2 section](#3-install-system-dependencies-1). Run all the same `apt install` commands for PHP 8.3, Composer, Node 22, MySQL, Redis, and Nginx.
+
+#### 5. Create a non-root user (recommended)
+
+```bash
+adduser deploy
+usermod -aG sudo deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
+```
+
+Then SSH back in as `deploy`:
+
+```bash
+ssh deploy@<DROPLET-IP>
+```
+
+#### 6. Create the database
+
+```bash
+sudo mysql_secure_installation
+
+sudo mysql <<'SQL'
+CREATE DATABASE IF NOT EXISTS `laravel` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'laravel'@'localhost' IDENTIFIED BY 'StrongPassword123!';
+GRANT ALL PRIVILEGES ON `laravel`.* TO 'laravel'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+```
+
+#### 7. Deploy the application
+
+```bash
+cd /var/www
+sudo git clone https://github.com/farhankarim/laravel12-redis.git
+sudo chown -R deploy:www-data laravel12-redis
+cd laravel12-redis
+
+cp .env.example .env
+nano .env
+```
+
+Set these values in `.env`:
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=http://<DROPLET-IP>
+
+DB_HOST=127.0.0.1
+DB_DATABASE=laravel
+DB_USERNAME=laravel
+DB_PASSWORD=StrongPassword123!
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+
+TRUSTED_PROXIES=*
+```
+
+```bash
+composer install --optimize-autoloader --no-dev
+php artisan key:generate
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+npm install
+npm run build
+```
+
+#### 8. Configure Nginx
+
+Identical to the [AWS Nginx config](#6-configure-nginx) — replace `<YOUR-EC2-PUBLIC-IP>` with your Droplet IP.
+
+```bash
+sudo chown -R www-data:www-data /var/www/laravel12-redis/storage
+sudo chown -R www-data:www-data /var/www/laravel12-redis/bootstrap/cache
+sudo chmod -R 775 /var/www/laravel12-redis/storage
+```
+
+#### 9. Run the queue worker
+
+Identical to the [AWS Supervisor config](#7-run-the-queue-worker-production). Use the same `supervisor` setup.
+
+#### 10. (Optional) Add a domain and SSL
+
+Point your domain's A record to the Droplet IP, then:
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+```
+
+Update `APP_URL` in `.env` and re-run `php artisan config:cache`.
+
+---
+
+## Environment Variables Reference
+
+All settings live in `.env`. Copy `.env.example` to get started:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_ENV` | `local` | `local`, `staging`, or `production` |
+| `APP_DEBUG` | `true` | Set `false` in production |
+| `APP_URL` | `http://localhost` | Full URL of the app (used in emails, redirects) |
+| `DB_HOST` | `127.0.0.1` | MySQL host |
+| `DB_PORT` | `3306` | MySQL port |
+| `DB_DATABASE` | `laravel` | Database name |
+| `DB_USERNAME` | `laravel` | Database user |
+| `DB_PASSWORD` | `laravel` | Database password |
+| `REDIS_CLIENT` | `predis` | `predis` (no extension required) |
+| `REDIS_HOST` | `127.0.0.1` | Redis host |
+| `REDIS_PASSWORD` | `null` | Redis password (set in production) |
+| `REDIS_PORT` | `6379` | Redis port |
+| `QUEUE_CONNECTION` | `redis` | Queue driver |
+| `CACHE_STORE` | `redis` | Cache driver |
+| `MAIL_MAILER` | `log` | Mail driver (`log`, `smtp`, etc.) |
+| `TRUSTED_PROXIES` | `127.0.0.1` | Comma-separated proxy IPs, or `*` behind a load-balancer |
+
+---
+
+## Running the Application
+
+### Development (all platforms)
+
+```bash
+# Starts Laravel, Vite, and the queue worker together
+composer run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) for the full-stack dev experience (Vite proxies API requests to Laravel on port 8000).
+
+Individual commands:
+
+```bash
+php artisan serve            # Laravel only
+npm run dev                  # Vite only
+php artisan queue:listen     # Queue worker only
+php artisan horizon          # Horizon dashboard at /horizon
+php artisan pail             # Real-time log tail
+```
+
+### Production
+
+Ensure Nginx, PHP-FPM, and Supervisor (queue workers) are running:
+
+```bash
+sudo systemctl status nginx php8.3-fpm
+sudo supervisorctl status laravel-worker:*
+```
+
+After deploying new code:
+
+```bash
+composer install --optimize-autoloader --no-dev
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+npm run build
+sudo supervisorctl restart laravel-worker:*
+```
+
+---
+
+## Feature Docs
+
 ## Codespaces: MySQL
 
 This project includes a `.devcontainer` setup that installs a local MySQL-compatible server in Codespaces during post-create.

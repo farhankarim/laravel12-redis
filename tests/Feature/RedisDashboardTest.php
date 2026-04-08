@@ -19,14 +19,14 @@ class RedisDashboardTest extends TestCase
     {
         $response = $this->get('/dashboard/queue');
 
-        $response->assertRedirect('/login');
+        $response->assertRedirect('/university/login');
     }
 
     public function test_users_dashboard_requires_authentication(): void
     {
         $response = $this->get('/dashboard/users');
 
-        $response->assertRedirect('/login');
+        $response->assertRedirect('/university/login');
     }
 
     // -----------------------------------------------------------------------

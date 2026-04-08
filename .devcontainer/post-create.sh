@@ -24,18 +24,18 @@ if ! php -m | grep -qi pdo_mysql; then
   fi
 fi
 
-if sudo service mysql status >/dev/null 2>&1; then
+if [ -f /etc/init.d/mysql ]; then
   sudo service mysql start
-elif sudo service mariadb status >/dev/null 2>&1; then
+elif [ -f /etc/init.d/mariadb ]; then
   sudo service mariadb start
 else
   echo "MySQL/MariaDB service not found" >&2
   exit 1
 fi
 
-if sudo service redis-server status >/dev/null 2>&1; then
+if [ -f /etc/init.d/redis-server ]; then
   sudo service redis-server start
-elif sudo service redis status >/dev/null 2>&1; then
+elif [ -f /etc/init.d/redis ]; then
   sudo service redis start
 else
   echo "Redis service not found" >&2
@@ -59,6 +59,14 @@ SQL
 
 if [ ! -f .env ]; then
   cp .env.example .env
+fi
+
+# In Codespaces the user accesses the app through the Vite dev-server at port
+# 5173. Update APP_URL so Artisan CLI commands (queue workers, notifications,
+# etc.) also generate correct URLs pointing at the Codespaces host.
+if [[ -n "${CODESPACE_NAME:-}" && -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]]; then
+  CODESPACES_APP_URL="https://${CODESPACE_NAME}-5173.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+  sed -i "s|APP_URL=.*|APP_URL=${CODESPACES_APP_URL}|" .env
 fi
 
 php artisan key:generate --force
