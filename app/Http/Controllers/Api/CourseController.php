@@ -37,4 +37,89 @@ class CourseController extends Controller
     {
         return response()->json(['deleted' => $this->courses->delete($id)]);
     }
+
+    public function getAvailableStudents(int $courseId): JsonResponse
+    {
+        $students = $this->courses->getAvailableStudents($courseId);
+        return response()->json($students);
+    }
+
+    public function getAssignedStudents(int $courseId): JsonResponse
+    {
+        $students = $this->courses->getAssignedStudents($courseId);
+        return response()->json($students);
+    }
+
+    public function assignStudents(Request $request, int $courseId): JsonResponse
+    {
+        $data = $request->validate([
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'required|integer|exists:students,id',
+            'semester' => 'required|string|max:20',
+        ]);
+
+        $count = $this->courses->bulkAssignStudents($courseId, $data['student_ids'], $data['semester']);
+
+        return response()->json([
+            'message' => "Assigned {$count} student(s) to course.",
+            'count' => $count,
+        ], 201);
+    }
+
+    public function revokeStudents(Request $request, int $courseId): JsonResponse
+    {
+        $data = $request->validate([
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'required|integer|exists:students,id',
+        ]);
+
+        $count = $this->courses->revokeStudents($courseId, $data['student_ids']);
+
+        return response()->json([
+            'message' => "Revoked {$count} student(s) from course.",
+            'count' => $count,
+        ]);
+    }
+
+    public function getAvailableInstructors(int $courseId): JsonResponse
+    {
+        $instructors = $this->courses->getAvailableInstructors($courseId);
+        return response()->json($instructors);
+    }
+
+    public function getAssignedInstructors(int $courseId): JsonResponse
+    {
+        $instructors = $this->courses->getAssignedInstructors($courseId);
+        return response()->json($instructors);
+    }
+
+    public function assignInstructors(Request $request, int $courseId): JsonResponse
+    {
+        $data = $request->validate([
+            'instructor_ids' => 'required|array|min:1',
+            'instructor_ids.*' => 'required|integer|exists:instructors,id',
+        ]);
+
+        $count = $this->courses->bulkAssignInstructors($courseId, $data['instructor_ids']);
+
+        return response()->json([
+            'message' => "Assigned {$count} instructor(s) to course.",
+            'count' => $count,
+        ], 201);
+    }
+
+    public function revokeInstructors(Request $request, int $courseId): JsonResponse
+    {
+        $data = $request->validate([
+            'instructor_ids' => 'required|array|min:1',
+            'instructor_ids.*' => 'required|integer|exists:instructors,id',
+        ]);
+
+        $count = $this->courses->revokeInstructors($courseId, $data['instructor_ids']);
+
+        return response()->json([
+            'message' => "Revoked {$count} instructor(s) from course.",
+            'count' => $count,
+        ]);
+    }
 }

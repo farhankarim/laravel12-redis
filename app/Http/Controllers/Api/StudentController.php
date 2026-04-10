@@ -8,6 +8,23 @@ use Illuminate\Http\Request;
 
 class StudentController extends Controller
 {
+    private const MASTER_REPORT_COLUMNS = [
+        'student_id',
+        'student_name',
+        'student_email',
+        'course_code',
+        'course_title',
+        'semester',
+        'grade',
+        'instructor_name',
+        'instructor_specialization',
+        'classroom_room_number',
+        'classroom_building',
+        'schedule_day',
+        'schedule_start_time',
+        'department_name',
+    ];
+
     public function __construct(protected StudentRepositoryInterface $students) {}
 
     public function index(): JsonResponse
@@ -54,5 +71,35 @@ class StudentController extends Controller
     public function masterReport(int $id): JsonResponse
     {
         return response()->json($this->students->masterReport($id));
+    }
+
+    public function masterReportBuilder(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'scope' => 'required|in:all,student',
+            'student_id' => 'nullable|required_if:scope,student|integer|exists:students,id',
+            'columns' => 'required|array|min:1',
+            'columns.*' => 'required|string|in:'.implode(',', self::MASTER_REPORT_COLUMNS),
+        ]);
+
+        $scope = $data['scope'];
+        $studentId = $scope === 'student' ? (int) $data['student_id'] : null;
+        $columns = array_values(array_unique($data['columns']));
+
+        $rows = $this->students->masterReport(
+            $studentId,
+            $columns,
+            $scope === 'all',
+        );
+
+        return response()->json([
+            'meta' => [
+                'scope' => $scope,
+                'student_id' => $studentId,
+                'columns' => $columns,
+                'total_rows' => count($rows),
+            ],
+            'rows' => $rows,
+        ]);
     }
 }

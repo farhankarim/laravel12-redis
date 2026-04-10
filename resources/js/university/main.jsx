@@ -14,12 +14,13 @@ import {
 import '@coreui/coreui/dist/css/coreui.min.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import StudentsPage from './pages/StudentsPage.jsx';
-import CoursesPage from './pages/CoursesPage.jsx';
-import InstructorsPage from './pages/InstructorsPage.jsx';
-import ClassroomsPage from './pages/ClassroomsPage.jsx';
-import DepartmentsPage from './pages/DepartmentsPage.jsx';
+import StudentsPage, { StudentsCreatePage, StudentsEditPage } from './pages/StudentsPage.jsx';
+import CoursesPage, { CoursesCreatePage, CoursesEditPage } from './pages/CoursesPage.jsx';
+import InstructorsPage, { InstructorsCreatePage, InstructorsEditPage } from './pages/InstructorsPage.jsx';
+import ClassroomsPage, { ClassroomsCreatePage, ClassroomsEditPage } from './pages/ClassroomsPage.jsx';
+import DepartmentsPage, { DepartmentsCreatePage, DepartmentsEditPage } from './pages/DepartmentsPage.jsx';
 import ReportPage from './pages/ReportPage.jsx';
+import CourseAssignPage from './pages/CourseAssignPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import axios from 'axios';
@@ -69,6 +70,10 @@ function AppLayout() {
           <CNavItem>
             <CNavLink as={NavLink} to="/departments">Departments</CNavLink>
           </CNavItem>
+          <CNavTitle>Operations</CNavTitle>
+          <CNavItem>
+            <CNavLink as={NavLink} to="/course-assign">Course Assignment</CNavLink>
+          </CNavItem>
           <CNavTitle>Reports</CNavTitle>
           <CNavItem>
             <CNavLink as={NavLink} to="/report">Master Report</CNavLink>
@@ -83,10 +88,21 @@ function AppLayout() {
       <CContainer className="p-4" fluid>
         <Routes>
           <Route path="/students"    element={<StudentsPage />} />
+          <Route path="/students/new"    element={<StudentsCreatePage />} />
+          <Route path="/students/:id/edit"    element={<StudentsEditPage />} />
           <Route path="/courses"     element={<CoursesPage />} />
+          <Route path="/courses/new"     element={<CoursesCreatePage />} />
+          <Route path="/courses/:id/edit"     element={<CoursesEditPage />} />
           <Route path="/instructors" element={<InstructorsPage />} />
+          <Route path="/instructors/new" element={<InstructorsCreatePage />} />
+          <Route path="/instructors/:id/edit" element={<InstructorsEditPage />} />
           <Route path="/classrooms"  element={<ClassroomsPage />} />
+          <Route path="/classrooms/new"  element={<ClassroomsCreatePage />} />
+          <Route path="/classrooms/:id/edit"  element={<ClassroomsEditPage />} />
           <Route path="/departments" element={<DepartmentsPage />} />
+          <Route path="/departments/new" element={<DepartmentsCreatePage />} />
+          <Route path="/departments/:id/edit" element={<DepartmentsEditPage />} />
+          <Route path="/course-assign" element={<CourseAssignPage />} />
           <Route path="/report"      element={<ReportPage />} />
           <Route path="/"            element={<StudentsPage />} />
           <Route path="/login"       element={<Navigate to="/students" replace />} />

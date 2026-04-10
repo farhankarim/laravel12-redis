@@ -1,2 +1,50 @@
+# Robots.txt for Laravel Redis Dashboard - SEO Optimized
+
+# Default rules for all bots
 User-agent: *
-Disallow:
+Allow: /
+
+# Disallow private/protected areas
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /private/
+Disallow: /storage/
+Disallow: /vendor/
+Disallow: /*.env
+Disallow: /config/
+Disallow: /.git/
+
+# Specific handling for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# Disallow aggressive crawlers
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+# Allow specific paths
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.jpg$
+Allow: /*.png$
+Allow: /*.gif$
+
+# Sitemap location
+Sitemap: https://example.com/sitemap.xml
+

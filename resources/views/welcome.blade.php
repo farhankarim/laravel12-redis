@@ -3,12 +3,69 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Laravel 12 Redis Dashboard - Monitor queue status, track email verifications, and manage user data with advanced Redis integration and real-time queue monitoring.">
+        <meta name="keywords" content="Laravel, Redis, Queue, Dashboard, Monitoring, PHP Framework, Real-time">
+        <meta name="author" content="{{ config('app.name', 'Laravel') }}">
+        <meta name="robots" content="index, follow">
+        <meta name="theme-color" content="#1b1b18">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{{ request()->url() }}">
+        <meta property="og:title" content="{{ config('app.name', 'Laravel') }} - Redis Dashboard">
+        <meta property="og:description" content="Monitor queue status, track email verifications, and manage user data with advanced Redis integration.">
+        <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+        <meta property="og:site_name" content="{{ config('app.name', 'Laravel') }}">
+        <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
 
-        <!-- Fonts -->
+        <!-- Twitter -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:url" content="{{ request()->url() }}">
+        <meta name="twitter:title" content="{{ config('app.name', 'Laravel') }} - Redis Dashboard">
+        <meta name="twitter:description" content="Monitor queue status, track email verifications, and manage user data with advanced Redis integration.">
+        <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
+
+        <!-- Canonical -->
+        <link rel="canonical" href="{{ request()->url() }}">
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50' font-size='90' fill='%231b1b18' text-anchor='middle' dominant-baseline='middle'>R</text></svg>">
+
+        <!-- Structured Data (Schema.org) -->
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "{{ config('app.name', 'Laravel') }} - Redis Dashboard",
+            "description": "Monitor queue status, track email verifications, and manage user data with advanced Redis integration.",
+            "url": "{{ request()->url() }}",
+            "applicationCategory": "UtilityApplication",
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD"
+            }
+        }
+        </script>
+
+        <title>{{ config('app.name', 'Laravel') }} - Redis Queue & User Dashboard</title>
+
+        <!-- Fonts - Trending Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        
+        <!-- Primary Font: Instrument Sans -->
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+        
+        <!-- Trending Fonts -->
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
         <!-- Styles / Scripts -->
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))

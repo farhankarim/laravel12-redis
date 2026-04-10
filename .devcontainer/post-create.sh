@@ -3,9 +3,9 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
-if ! command -v mysql >/dev/null 2>&1; then
+if ! command -v mariadb >/dev/null 2>&1 && ! command -v mysql >/dev/null 2>&1; then
   sudo apt-get update
-  sudo apt-get install -y default-mysql-server default-mysql-client
+  sudo apt-get install -y mariadb-server mariadb-client
 fi
 
 if ! command -v redis-server >/dev/null 2>&1; then
@@ -15,12 +15,23 @@ fi
 
 if ! php -m | grep -qi pdo_mysql; then
   if command -v docker-php-ext-install >/dev/null 2>&1; then
-    sudo docker-php-ext-install pdo_mysql
+    sudo PHP_INI_DIR=/usr/local/etc/php docker-php-ext-install pdo_mysql
     sudo mkdir -p /usr/local/etc/php/conf.d
     echo 'extension=pdo_mysql' | sudo tee /usr/local/etc/php/conf.d/docker-php-ext-pdo_mysql.ini >/dev/null
   else
     sudo apt-get update
     sudo apt-get install -y php-mysql || sudo apt-get install -y php8.3-mysql || sudo apt-get install -y php8.2-mysql
+  fi
+fi
+
+if ! php -m | grep -qi '^pcntl$'; then
+  if command -v docker-php-ext-install >/dev/null 2>&1; then
+    sudo PHP_INI_DIR=/usr/local/etc/php docker-php-ext-install pcntl
+    sudo mkdir -p /usr/local/etc/php/conf.d
+    echo 'extension=pcntl' | sudo tee /usr/local/etc/php/conf.d/docker-php-ext-pcntl.ini >/dev/null
+  else
+    sudo apt-get update
+    sudo apt-get install -y php-process || sudo apt-get install -y php8.3-process || sudo apt-get install -y php8.2-process
   fi
 fi
 
@@ -46,7 +57,13 @@ DB_NAME="laravel"
 DB_USER="laravel"
 DB_PASSWORD="laravel"
 
-sudo mysql <<SQL
+if command -v mariadb >/dev/null 2>&1; then
+  DB_CLI="mariadb"
+else
+  DB_CLI="mysql"
+fi
+
+sudo "${DB_CLI}" <<SQL
 CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 DROP USER IF EXISTS '${DB_USER}'@'localhost';
 DROP USER IF EXISTS '${DB_USER}'@'127.0.0.1';

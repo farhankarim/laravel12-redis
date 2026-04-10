@@ -2,8 +2,38 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Dashboard' }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Redis Dashboard - Real-time monitoring and management of queue jobs, email verifications, and user data. Track performance metrics and system health.">
+    <meta name="keywords" content="Redis, Queue, Dashboard, Monitoring, Real-time, Email Verification, User Management">
+    <meta name="author" content="{{ config('app.name', 'Laravel') }}">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#fff">
+    <meta name="color-scheme" content="light dark">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $title ?? 'Dashboard' }} - {{ config('app.name', 'Laravel') }}">
+    <meta property="og:description" content="Real-time monitoring and management dashboard for Redis queues.">
+    <meta property="og:site_name" content="{{ config('app.name', 'Laravel') }}">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="{{ request()->url() }}">
+
+    <!-- Security Headers -->
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+    <!-- Fonts - Trending Fonts for Dashboard -->
+    <!-- Primary Font: Inter (modern, clean) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Secondary Font: Poppins (friendly, modern) -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Monospace: JetBrains Mono (for code/data) -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <title>{{ $title ?? 'Dashboard' }} - {{ config('app.name', 'Laravel') }}</title>
 
     @vite(['resources/js/app.js'])
     @livewireStyles

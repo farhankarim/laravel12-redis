@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { useSEO } from '../hooks/useSEO.jsx';
 import {
   CCard,
   CCardBody,
@@ -9,29 +10,41 @@ import {
   CFormInput,
   CFormLabel,
   CButton,
-  CAlert,
 } from '@coreui/react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function RegisterPage() {
   const { saveAuth } = useAuth();
   const [form, setForm]     = useState({ name: '', email: '', password: '', password_confirmation: '' });
-  const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
+
+  useSEO({
+    title: 'Register',
+    description: 'Create a new account in the University Management System. Join as a student, instructor, or administrator.',
+    keywords: 'register, create account, sign up, new user, university system'
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setErrors({});
+    setFormError('');
     setLoading(true);
     try {
       const res = await axios.post('/api/auth/register', form);
       saveAuth(res.data.token, res.data.user);
     } catch (err) {
-      const data = err.response?.data;
-      const msg  = data?.errors
-        ? Object.values(data.errors).flat().join(' ')
-        : data?.message || 'Registration failed.';
-      setError(msg);
+      const responseErrors = err.response?.data?.errors;
+      if (responseErrors && typeof responseErrors === 'object') {
+        const nextErrors = {};
+        Object.entries(responseErrors).forEach(([key, value]) => {
+          nextErrors[key] = Array.isArray(value) ? value[0] : String(value);
+        });
+        setErrors(nextErrors);
+      }
+
+      setFormError(err.response?.data?.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -42,8 +55,7 @@ export default function RegisterPage() {
       <CCard style={{ width: '100%', maxWidth: 420 }}>
         <CCardHeader><strong>Create Account</strong></CCardHeader>
         <CCardBody>
-          {error && <CAlert color="danger">{error}</CAlert>}
-          <CForm onSubmit={handleSubmit}>
+          <CForm noValidate onSubmit={handleSubmit}>
             <div className="mb-3">
               <CFormLabel>Name</CFormLabel>
               <CFormInput
@@ -52,6 +64,7 @@ export default function RegisterPage() {
                 required
                 autoFocus
               />
+              {errors.name && <div className="text-danger fw-bold mt-1">{errors.name}</div>}
             </div>
             <div className="mb-3">
               <CFormLabel>Email</CFormLabel>
@@ -61,6 +74,7 @@ export default function RegisterPage() {
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 required
               />
+              {errors.email && <div className="text-danger fw-bold mt-1">{errors.email}</div>}
             </div>
             <div className="mb-3">
               <CFormLabel>Password</CFormLabel>
@@ -70,6 +84,7 @@ export default function RegisterPage() {
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 required
               />
+              {errors.password && <div className="text-danger fw-bold mt-1">{errors.password}</div>}
             </div>
             <div className="mb-3">
               <CFormLabel>Confirm Password</CFormLabel>
@@ -79,7 +94,9 @@ export default function RegisterPage() {
                 onChange={e => setForm({ ...form, password_confirmation: e.target.value })}
                 required
               />
+              {errors.password_confirmation && <div className="text-danger fw-bold mt-1">{errors.password_confirmation}</div>}
             </div>
+            {formError && <div className="text-danger fw-bold mb-3">{formError}</div>}
             <CButton type="submit" color="primary" className="w-100" disabled={loading}>
               {loading ? 'Creating account…' : 'Register'}
             </CButton>

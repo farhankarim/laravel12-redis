@@ -19,8 +19,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('students/{student}/enroll', [StudentController::class, 'enroll']);
         Route::patch('students/{student}/grade', [StudentController::class, 'updateGrade']);
         Route::get('students/{student}/report', [StudentController::class, 'masterReport']);
+        Route::post('reports/master', [StudentController::class, 'masterReportBuilder']);
 
         Route::apiResource('courses', CourseController::class);
+        Route::get('courses/{course}/available-students', [CourseController::class, 'getAvailableStudents']);
+        Route::get('courses/{course}/assigned-students', [CourseController::class, 'getAssignedStudents']);
+        Route::post('courses/{course}/assign-students', [CourseController::class, 'assignStudents']);
+        Route::post('courses/{course}/revoke-students', [CourseController::class, 'revokeStudents']);
+        Route::get('courses/{course}/available-instructors', [CourseController::class, 'getAvailableInstructors']);
+        Route::get('courses/{course}/assigned-instructors', [CourseController::class, 'getAssignedInstructors']);
+        Route::post('courses/{course}/assign-instructors', [CourseController::class, 'assignInstructors']);
+        Route::post('courses/{course}/revoke-instructors', [CourseController::class, 'revokeInstructors']);
+
         Route::apiResource('instructors', InstructorController::class);
         Route::apiResource('classrooms', ClassroomController::class);
         Route::apiResource('departments', DepartmentController::class);

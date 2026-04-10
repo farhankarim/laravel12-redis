@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SitemapController;
 use App\Livewire\QueueSummaryDashboard;
 use App\Livewire\UsersSummaryDashboard;
 use Illuminate\Http\Request;
@@ -7,7 +8,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('welcome');
+
+// SEO Routes - Sitemap and robots.txt
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+Route::get('/sitemap', [SitemapController::class, 'sitemap'])->name('sitemap');
 
 // Email verification endpoint — validates the time-limited HMAC signature generated
 // by QueuedEmailVerificationNotification before processing the verification.
