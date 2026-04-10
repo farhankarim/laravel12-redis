@@ -97,6 +97,7 @@ class QueueGenerateStudentsCommand extends Command
 
         $this->info('Scheduling courses in classrooms…');
         $this->seedCourseSchedules($courseIds, $classroomIds);
+        $courseScheduleMap = $this->getCourseScheduleMap($courseIds);
 
         // ── 2. Dispatch student chunk jobs ─────────────────────────────────────
 
@@ -106,7 +107,7 @@ class QueueGenerateStudentsCommand extends Command
         for ($index = 1; $index <= $total; $index += $chunk) {
             $chunkSize = min($chunk, $total - $index + 1);
 
-            GenerateStudentsChunkJob::dispatch($index, $chunkSize, $runId, $courseIds, $enrolPerStudent)
+            GenerateStudentsChunkJob::dispatch($index, $chunkSize, $runId, $courseIds, $courseScheduleMap, $enrolPerStudent)
                 ->onConnection($connection)
                 ->onQueue($queue);
         }
@@ -247,6 +248,7 @@ class QueueGenerateStudentsCommand extends Command
             $rows[] = [
                 'course_code' => strtoupper("CRS-{$runId}-{$i}"),
                 'title' => "Course {$runId} #{$i}",
+                'credit_hours' => (($i - 1) % 4) + 2,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
@@ -315,5 +317,34 @@ class QueueGenerateStudentsCommand extends Command
         foreach (array_chunk($rows, 1000) as $batch) {
             DB::table('course_schedules')->insert($batch);
         }
+    }
+
+    /**
+     * Build a map of course_id => list of schedule slots.
+     *
+     * @return array<int, array<int, array{day_of_week:string,start_time:string}>>
+     */
+    private function getCourseScheduleMap(array $courseIds): array
+    {
+        $rows = DB::table('course_schedules')
+            ->whereIn('course_id', $courseIds)
+            ->select('course_id', 'day_of_week', 'start_time')
+            ->get();
+
+        $map = [];
+
+        foreach ($rows as $row) {
+            $courseId = (int) $row->course_id;
+            if (! isset($map[$courseId])) {
+                $map[$courseId] = [];
+            }
+
+            $map[$courseId][] = [
+                'day_of_week' => (string) $row->day_of_week,
+                'start_time' => (string) $row->start_time,
+            ];
+        }
+
+        return $map;
     }
 }

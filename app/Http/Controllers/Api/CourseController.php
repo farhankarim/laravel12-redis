@@ -17,7 +17,11 @@ class CourseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(['course_code' => 'required|string|unique:courses', 'title' => 'required|string|max:255']);
+        $data = $request->validate([
+            'course_code' => 'required|string|unique:courses',
+            'title' => 'required|string|max:255',
+            'credit_hours' => 'required|integer|min:1|max:6',
+        ]);
         return response()->json($this->courses->create($data), 201);
     }
 
@@ -29,7 +33,11 @@ class CourseController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
-        $data = $request->validate(['course_code' => 'sometimes|string|unique:courses,course_code,'.$id, 'title' => 'sometimes|string|max:255']);
+        $data = $request->validate([
+            'course_code' => 'sometimes|string|unique:courses,course_code,'.$id,
+            'title' => 'sometimes|string|max:255',
+            'credit_hours' => 'sometimes|integer|min:1|max:6',
+        ]);
         return response()->json(['updated' => $this->courses->update($id, $data)]);
     }
 
@@ -58,12 +66,31 @@ class CourseController extends Controller
             'semester' => 'required|string|max:20',
         ]);
 
-        $count = $this->courses->bulkAssignStudents($courseId, $data['student_ids'], $data['semester']);
+        $result = $this->courses->bulkAssignStudents($courseId, $data['student_ids'], $data['semester']);
 
         return response()->json([
-            'message' => "Assigned {$count} student(s) to course.",
-            'count' => $count,
+            'message' => "Assigned {$result['assigned_count']} student(s) to course.",
+            'assigned_count' => $result['assigned_count'],
+            'conflict_count' => $result['conflict_count'],
+            'conflict_students' => $result['conflict_students'],
         ], 201);
+    }
+
+    public function validateStudentsAssignment(Request $request, int $courseId): JsonResponse
+    {
+        $data = $request->validate([
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'required|integer|exists:students,id',
+            'semester' => 'required|string|max:20',
+        ]);
+
+        $result = $this->courses->validateStudentAssignmentConflicts(
+            $courseId,
+            $data['student_ids'],
+            $data['semester'],
+        );
+
+        return response()->json($result);
     }
 
     public function revokeStudents(Request $request, int $courseId): JsonResponse
@@ -96,14 +123,16 @@ class CourseController extends Controller
     public function assignInstructors(Request $request, int $courseId): JsonResponse
     {
         $data = $request->validate([
-            'instructor_ids' => 'required|array|min:1',
+            'instructor_ids' => 'required|array|size:1',
             'instructor_ids.*' => 'required|integer|exists:instructors,id',
         ]);
 
         $count = $this->courses->bulkAssignInstructors($courseId, $data['instructor_ids']);
 
         return response()->json([
-            'message' => "Assigned {$count} instructor(s) to course.",
+            'message' => $count > 0
+                ? 'Instructor assigned to course.'
+                : 'No instructor assignment was applied.',
             'count' => $count,
         ], 201);
     }

@@ -37,15 +37,49 @@ class StudentRepository extends BaseRepository implements StudentRepositoryInter
         return Student::class;
     }
 
-    public function enroll(int $studentId, int $courseId, string $semester): void
+    public function enroll(int $studentId, int $courseId, string $semester): array
     {
-        DB::table('enrollments')->insertOrIgnore([
+        $targetSchedule = DB::table('course_schedules')
+            ->where('course_id', $courseId)
+            ->select('day_of_week', 'start_time')
+            ->get();
+
+        if ($targetSchedule->isNotEmpty()) {
+            $hasConflict = DB::table('enrollments as e')
+                ->join('course_schedules as cs', 'e.course_id', '=', 'cs.course_id')
+                ->where('e.student_id', $studentId)
+                ->where('e.semester', $semester)
+                ->where('e.course_id', '!=', $courseId)
+                ->where(function ($query) use ($targetSchedule) {
+                    foreach ($targetSchedule as $slot) {
+                        $query->orWhere(function ($slotQuery) use ($slot) {
+                            $slotQuery->where('cs.day_of_week', $slot->day_of_week)
+                                ->where('cs.start_time', $slot->start_time);
+                        });
+                    }
+                })
+                ->exists();
+
+            if ($hasConflict) {
+                return [
+                    'enrolled' => false,
+                    'conflict' => true,
+                ];
+            }
+        }
+
+        $inserted = DB::table('enrollments')->insertOrIgnore([
             'student_id' => $studentId,
             'course_id'  => $courseId,
             'semester'   => $semester,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        return [
+            'enrolled' => (bool) $inserted,
+            'conflict' => false,
+        ];
     }
 
     public function updateGrade(int $studentId, int $courseId, string $grade): bool

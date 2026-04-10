@@ -74,13 +74,14 @@ class MasterReportSeeder extends Seeder
         // ------------------------------------------------------------------
         $courseIds = [];
         foreach ([
-            ['course_code' => 'CS101',   'title' => 'Introduction to Computer Science'],
-            ['course_code' => 'MATH201', 'title' => 'Calculus II'],
-            ['course_code' => 'PHYS301', 'title' => 'Quantum Mechanics I'],
+            ['course_code' => 'CS101',   'title' => 'Introduction to Computer Science', 'credit_hours' => 3],
+            ['course_code' => 'MATH201', 'title' => 'Calculus II', 'credit_hours' => 4],
+            ['course_code' => 'PHYS301', 'title' => 'Quantum Mechanics I', 'credit_hours' => 3],
         ] as $row) {
             $courseIds[$row['course_code']] = DB::table('courses')->insertGetId([
                 'course_code' => $row['course_code'],
                 'title'       => $row['title'],
+                'credit_hours'=> $row['credit_hours'],
                 'created_at'  => $now,
                 'updated_at'  => $now,
             ]);

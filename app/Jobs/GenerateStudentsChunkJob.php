@@ -26,6 +26,7 @@ class GenerateStudentsChunkJob implements ShouldQueue
         public int $chunkSize,
         public string $runId,
         public array $courseIds,
+        public array $courseScheduleMap,
         public int $enrollmentsPerStudent = 4,
     ) {}
 
@@ -71,15 +72,27 @@ class GenerateStudentsChunkJob implements ShouldQueue
         $enrollmentRows = [];
         foreach ($studentIds as $studentId) {
             $picked = $this->pickDistinct($coursePool, $poolSize, $enrolCount);
+            $usedSlotsBySemester = [];
+
             foreach ($picked as $courseId) {
+                $semester = $this->pickNonConflictingSemester($courseId, $semesters, $usedSlotsBySemester);
+
+                if ($semester === null) {
+                    continue;
+                }
+
                 $enrollmentRows[] = [
                     'student_id' => $studentId,
                     'course_id' => $courseId,
-                    'semester' => $semesters[array_rand($semesters)],
+                    'semester' => $semester,
                     'grade' => $grades[array_rand($grades)],
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp,
                 ];
+
+                foreach (($this->courseScheduleMap[$courseId] ?? []) as $slot) {
+                    $usedSlotsBySemester[$semester][$slot['day_of_week'].'|'.$slot['start_time']] = true;
+                }
             }
         }
 
@@ -103,5 +116,31 @@ class GenerateStudentsChunkJob implements ShouldQueue
         $keys = array_rand($pool, $count);
 
         return array_map(fn ($k) => $pool[$k], (array) $keys);
+    }
+
+    private function pickNonConflictingSemester(int $courseId, array $semesters, array $usedSlotsBySemester): ?string
+    {
+        $shuffledSemesters = $semesters;
+        shuffle($shuffledSemesters);
+
+        $courseSlots = $this->courseScheduleMap[$courseId] ?? [];
+
+        foreach ($shuffledSemesters as $semester) {
+            $hasConflict = false;
+
+            foreach ($courseSlots as $slot) {
+                $slotKey = $slot['day_of_week'].'|'.$slot['start_time'];
+                if (! empty($usedSlotsBySemester[$semester][$slotKey])) {
+                    $hasConflict = true;
+                    break;
+                }
+            }
+
+            if (! $hasConflict) {
+                return $semester;
+            }
+        }
+
+        return null;
     }
 }

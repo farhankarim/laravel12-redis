@@ -24,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('courses', CourseController::class);
         Route::get('courses/{course}/available-students', [CourseController::class, 'getAvailableStudents']);
         Route::get('courses/{course}/assigned-students', [CourseController::class, 'getAssignedStudents']);
+        Route::post('courses/{course}/validate-students-assignment', [CourseController::class, 'validateStudentsAssignment']);
         Route::post('courses/{course}/assign-students', [CourseController::class, 'assignStudents']);
         Route::post('courses/{course}/revoke-students', [CourseController::class, 'revokeStudents']);
         Route::get('courses/{course}/available-instructors', [CourseController::class, 'getAvailableInstructors']);

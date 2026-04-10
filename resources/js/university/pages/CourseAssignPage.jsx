@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { useSEO } from '../hooks/useSEO.jsx';
 import {
   CButton,
   CCard,
@@ -35,15 +34,9 @@ export default function CourseAssignPage() {
   const [draggedItem, setDraggedItem] = useState(null);
   const [dragSource, setDragSource] = useState(null);
 
-  useSEO({
-    title: 'Course Assignments',
-    description: 'Manage course assignments by assigning students and instructors to courses with ease.',
-    keywords: 'course assignment, assign students, assign instructors, course management'
-  });
-
-  const currentAssigmentType = ASSIGNMENT_TYPES.find(t => t.value === assignmentType);
   const courseLabel = assignmentType === 'students' ? 'Student' : 'Instructor';
   const courseFieldKey = assignmentType === 'students' ? 'student_ids' : 'instructor_ids';
+  const isSingleInstructorMode = assignmentType === 'instructors';
 
   // Load courses on mount
   useEffect(() => {
@@ -95,11 +88,15 @@ export default function CourseAssignPage() {
   }, [selectedCourse, assignmentType]);
 
   const toggleSelectForAssign = (id) => {
-    setSelectedForAssign(prev =>
-      prev.includes(id)
+    setSelectedForAssign(prev => {
+      if (isSingleInstructorMode) {
+        return prev.includes(id) ? [] : [id];
+      }
+
+      return prev.includes(id)
         ? prev.filter(x => x !== id)
-        : [...prev, id]
-    );
+        : [...prev, id];
+    });
   };
 
   const toggleSelectForRevoke = (id) => {
@@ -111,6 +108,11 @@ export default function CourseAssignPage() {
   };
 
   const selectAllAvailable = () => {
+    if (isSingleInstructorMode) {
+      setSelectedForAssign(available[0] ? [available[0].id] : []);
+      return;
+    }
+
     setSelectedForAssign(available.map(a => a.id));
   };
 
@@ -178,6 +180,32 @@ export default function CourseAssignPage() {
 
       if (assignmentType === 'students') {
         payload.semester = semesterForStudents;
+
+        const validationResponse = await axios.post(
+          `/api/v1/courses/${selectedCourse}/validate-students-assignment`,
+          payload
+        );
+
+        const preConflictCount = validationResponse.data?.conflict_count ?? 0;
+        const preConflictStudents = validationResponse.data?.conflict_students ?? [];
+
+        if (preConflictCount > 0) {
+          const names = preConflictStudents.map(student => student.name).join(', ');
+
+          const proceed = await Swal.fire({
+            icon: 'warning',
+            title: 'Schedule conflicts detected',
+            text: `${preConflictCount} selected student(s) already have another course at the same time in ${semesterForStudents}. Conflicting students will be skipped. Continue?${names ? ` Conflicts: ${names}` : ''}`,
+            showCancelButton: true,
+            confirmButtonText: 'Continue',
+            cancelButtonText: 'Cancel',
+          });
+
+          if (!proceed.isConfirmed) {
+            setIsSubmitting(false);
+            return;
+          }
+        }
       }
 
       const response = await axios.post(
@@ -185,10 +213,25 @@ export default function CourseAssignPage() {
         payload
       );
 
+      const assignedCount = response.data.assigned_count ?? response.data.count ?? 0;
+      const conflictCount = response.data.conflict_count ?? 0;
+      const conflictStudents = response.data.conflict_students ?? [];
+
+      let successText = response.data.message;
+
+      if (assignmentType === 'students' && conflictCount > 0) {
+        const names = conflictStudents.map(student => student.name).join(', ');
+        successText = `${assignedCount} assigned, ${conflictCount} skipped due to schedule overlap in ${semesterForStudents}.`;
+
+        if (names) {
+          successText += ` Conflicts: ${names}`;
+        }
+      }
+
       Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: response.data.message,
+        icon: conflictCount > 0 ? 'warning' : 'success',
+        title: conflictCount > 0 ? 'Partial assignment' : 'Success',
+        text: successText,
       });
 
       // Refresh the lists
@@ -327,7 +370,7 @@ export default function CourseAssignPage() {
                 <option value="">Choose a course...</option>
                 {courses.map(course => (
                   <option key={course.id} value={course.id}>
-                    {course.course_code} - {course.title}
+                    {course.course_code} - {course.title} ({course.credit_hours ?? 0} CH)
                   </option>
                 ))}
               </CFormSelect>

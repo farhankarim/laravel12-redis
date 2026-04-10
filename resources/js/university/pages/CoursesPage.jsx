@@ -16,10 +16,12 @@ export default function CoursesPage() {
       fields={[
         { key: 'course_code', label: 'Course Code' },
         { key: 'title', label: 'Title' },
+        { key: 'credit_hours', label: 'Credit Hours', type: 'number' },
       ]}
       displayColumns={[
         { key: 'course_code', label: 'Code' },
         { key: 'title', label: 'Title' },
+        { key: 'credit_hours', label: 'Credit Hours' },
       ]}
       mode="list"
       basePath="/courses"
@@ -41,10 +43,12 @@ export function CoursesCreatePage() {
       fields={[
         { key: 'course_code', label: 'Course Code' },
         { key: 'title', label: 'Title' },
+        { key: 'credit_hours', label: 'Credit Hours', type: 'number' },
       ]}
       displayColumns={[
         { key: 'course_code', label: 'Code' },
         { key: 'title', label: 'Title' },
+        { key: 'credit_hours', label: 'Credit Hours' },
       ]}
       mode="create"
       basePath="/courses"
@@ -68,10 +72,12 @@ export function CoursesEditPage() {
       fields={[
         { key: 'course_code', label: 'Course Code' },
         { key: 'title', label: 'Title' },
+        { key: 'credit_hours', label: 'Credit Hours', type: 'number' },
       ]}
       displayColumns={[
         { key: 'course_code', label: 'Code' },
         { key: 'title', label: 'Title' },
+        { key: 'credit_hours', label: 'Credit Hours' },
       ]}
       mode="edit"
       basePath="/courses"

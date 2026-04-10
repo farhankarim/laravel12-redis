@@ -58,7 +58,14 @@ class StudentController extends Controller
     public function enroll(Request $request, int $id): JsonResponse
     {
         $data = $request->validate(['course_id' => 'required|integer|exists:courses,id', 'semester' => 'required|string|max:20']);
-        $this->students->enroll($id, $data['course_id'], $data['semester']);
+        $result = $this->students->enroll($id, $data['course_id'], $data['semester']);
+
+        if ($result['conflict']) {
+            return response()->json([
+                'message' => 'Enrollment blocked due to schedule overlap in the same semester.',
+            ], 422);
+        }
+
         return response()->json(['message' => 'Enrolled successfully']);
     }
 

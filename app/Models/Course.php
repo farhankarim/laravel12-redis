@@ -9,7 +9,7 @@ class Course extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['course_code', 'title'];
+    protected $fillable = ['course_code', 'title', 'credit_hours'];
 
     public function students(): BelongsToMany
     {

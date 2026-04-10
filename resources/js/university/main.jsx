@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import {
   CContainer,
   CSidebar,
-  CSidebarBrand,
   CSidebarNav,
   CNavItem,
   CNavLink,
@@ -28,6 +27,7 @@ import axios from 'axios';
 function AppLayout() {
   const { isAuthenticated, clearAuth, user } = useAuth();
   const navigate = useNavigate();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -51,41 +51,71 @@ function AppLayout() {
 
   return (
     <div className="d-flex" style={{ minHeight: '100vh' }}>
-      <CSidebar colorScheme="dark" style={{ minHeight: '100vh' }}>
-        <CSidebarBrand>University</CSidebarBrand>
-        <CSidebarNav>
-          <CNavTitle>Entities</CNavTitle>
-          <CNavItem>
-            <CNavLink as={NavLink} to="/students">Students</CNavLink>
-          </CNavItem>
-          <CNavItem>
-            <CNavLink as={NavLink} to="/courses">Courses</CNavLink>
-          </CNavItem>
-          <CNavItem>
-            <CNavLink as={NavLink} to="/instructors">Instructors</CNavLink>
-          </CNavItem>
-          <CNavItem>
-            <CNavLink as={NavLink} to="/classrooms">Classrooms</CNavLink>
-          </CNavItem>
-          <CNavItem>
-            <CNavLink as={NavLink} to="/departments">Departments</CNavLink>
-          </CNavItem>
-          <CNavTitle>Operations</CNavTitle>
-          <CNavItem>
-            <CNavLink as={NavLink} to="/course-assign">Course Assignment</CNavLink>
-          </CNavItem>
-          <CNavTitle>Reports</CNavTitle>
-          <CNavItem>
-            <CNavLink as={NavLink} to="/report">Master Report</CNavLink>
-          </CNavItem>
-          <CNavTitle>Account</CNavTitle>
-          <CNavItem className="px-3 py-2">
-            {user?.name && <div className="text-white-50 small mb-2">{user.name}</div>}
-            <CButton color="secondary" size="sm" onClick={handleLogout}>Logout</CButton>
-          </CNavItem>
-        </CSidebarNav>
-      </CSidebar>
+      {!isSidebarCollapsed && (
+        <CSidebar colorScheme="dark" style={{ minHeight: '100vh' }}>
+          <div className="px-3 py-3 border-bottom border-secondary">
+            <CButton
+              color="light"
+              variant="ghost"
+              className="w-100 d-flex align-items-center justify-content-between"
+              onClick={() => setIsSidebarCollapsed(true)}
+              aria-label="Collapse sidebar"
+            >
+              <img src="/favicon.ico" alt="App" width="18" height="18" />
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M10.5 3.5L6 8l4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </CButton>
+          </div>
+          <CSidebarNav>
+            <CNavTitle>Entities</CNavTitle>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/students">Students</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/courses">Courses</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/instructors">Instructors</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/classrooms">Classrooms</CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/departments">Departments</CNavLink>
+            </CNavItem>
+            <CNavTitle>Operations</CNavTitle>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/course-assign">Course Assignment</CNavLink>
+            </CNavItem>
+            <CNavTitle>Reports</CNavTitle>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/report">Master Report</CNavLink>
+            </CNavItem>
+            <CNavTitle>Account</CNavTitle>
+            <CNavItem className="px-3 py-2">
+              {user?.name && <div className="text-white-50 small mb-2">{user.name}</div>}
+              <CButton color="secondary" size="sm" onClick={handleLogout}>Logout</CButton>
+            </CNavItem>
+          </CSidebarNav>
+        </CSidebar>
+      )}
       <CContainer className="p-4" fluid>
+        {isSidebarCollapsed && (
+          <div className="mb-3">
+            <CButton
+              color="dark"
+              variant="outline"
+              className="d-flex align-items-center justify-content-center"
+              onClick={() => setIsSidebarCollapsed(false)}
+              aria-label="Expand sidebar"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M5.5 3.5L10 8l-4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </CButton>
+          </div>
+        )}
         <Routes>
           <Route path="/students"    element={<StudentsPage />} />
           <Route path="/students/new"    element={<StudentsCreatePage />} />
