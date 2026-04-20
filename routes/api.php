@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\InstructorController;
 use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\UserSearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/register', [AuthController::class, 'register']);
@@ -35,5 +36,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('instructors', InstructorController::class);
         Route::apiResource('classrooms', ClassroomController::class);
         Route::apiResource('departments', DepartmentController::class);
+        Route::get('users/search', [UserSearchController::class, 'search']);
     });
 });

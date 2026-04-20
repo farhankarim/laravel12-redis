@@ -614,6 +614,9 @@ cp .env.example .env
 | `REDIS_HOST` | `127.0.0.1` | Redis host |
 | `REDIS_PASSWORD` | `null` | Redis password (set in production) |
 | `REDIS_PORT` | `6379` | Redis port |
+| `ELASTICSEARCH_ENABLED` | `true` | Enable Elasticsearch-backed user search |
+| `ELASTICSEARCH_HOSTS` | `http://127.0.0.1:9200` | Comma-separated Elasticsearch node URLs |
+| `ELASTICSEARCH_USERS_INDEX` | `users` | Elasticsearch index name for user documents |
 | `QUEUE_CONNECTION` | `redis` | Queue driver |
 | `CACHE_STORE` | `redis` | Cache driver |
 | `MAIL_MAILER` | `log` | Mail driver (`log`, `smtp`, etc.) |
@@ -702,6 +705,29 @@ Optional overrides:
 ```bash
 TOTAL_USERS=1000000 CHUNK_SIZE=1000 WORKERS=6 QUEUE_NAME=user-imports QUEUE_CONNECTION=redis ./scripts/generate-million-users.sh
 ```
+
+## Elasticsearch: search users by name
+
+Install and run Elasticsearch locally (default host: `http://127.0.0.1:9200`), then keep these values in your `.env`:
+
+```dotenv
+ELASTICSEARCH_ENABLED=true
+ELASTICSEARCH_HOSTS=http://127.0.0.1:9200
+ELASTICSEARCH_USERS_INDEX=users
+```
+
+API endpoint (requires Sanctum auth):
+
+```http
+GET /api/v1/users/search?name=farhan&limit=20
+```
+
+SPA screen:
+
+- Navigate to **Operations → User Search**
+- Enter a name and submit to view matching users
+
+If Elasticsearch is unavailable, the API gracefully falls back to database `LIKE` search.
 
 ## Email verification batch + free mail testing
 

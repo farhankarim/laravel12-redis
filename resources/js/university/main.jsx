@@ -22,6 +22,7 @@ import ReportPage from './pages/ReportPage.jsx';
 import CourseAssignPage from './pages/CourseAssignPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
+import UsersSearchPage from './pages/UsersSearchPage.jsx';
 import axios from 'axios';
 
 function AppLayout() {
@@ -88,6 +89,9 @@ function AppLayout() {
             <CNavItem>
               <CNavLink as={NavLink} to="/course-assign">Course Assignment</CNavLink>
             </CNavItem>
+            <CNavItem>
+              <CNavLink as={NavLink} to="/users/search">User Search</CNavLink>
+            </CNavItem>
             <CNavTitle>Reports</CNavTitle>
             <CNavItem>
               <CNavLink as={NavLink} to="/report">Master Report</CNavLink>
@@ -133,6 +137,7 @@ function AppLayout() {
           <Route path="/departments/new" element={<DepartmentsCreatePage />} />
           <Route path="/departments/:id/edit" element={<DepartmentsEditPage />} />
           <Route path="/course-assign" element={<CourseAssignPage />} />
+          <Route path="/users/search" element={<UsersSearchPage />} />
           <Route path="/report"      element={<ReportPage />} />
           <Route path="/"            element={<StudentsPage />} />
           <Route path="/login"       element={<Navigate to="/students" replace />} />
