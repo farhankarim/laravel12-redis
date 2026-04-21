@@ -5,7 +5,7 @@ return [
     'documentations' => [
         'default' => [
             'api' => [
-                'title' => 'L5 Swagger UI',
+                'title' => 'University Management API',
             ],
 
             'routes' => [
@@ -193,28 +193,12 @@ return [
                 ],
                 */
 
-                /* Open API 3.0 support
-                'passport' => [ // Unique name of security
-                    'type' => 'oauth2', // The type of the security scheme. Valid values are "basic", "apiKey" or "oauth2".
-                    'description' => 'Laravel passport oauth2 security.',
-                    'in' => 'header',
-                    'scheme' => 'https',
-                    'flows' => [
-                        "password" => [
-                            "authorizationUrl" => config('app.url') . '/oauth/authorize',
-                            "tokenUrl" => config('app.url') . '/oauth/token',
-                            "refreshUrl" => config('app.url') . '/token/refresh',
-                            "scopes" => []
-                        ],
-                    ],
+                'sanctum' => [
+                    'type' => 'http',
+                    'description' => 'Laravel Sanctum token authentication. Obtain a token via POST /api/auth/login then enter it here (without the "Bearer " prefix — Swagger UI adds that automatically).',
+                    'scheme' => 'bearer',
+                    'bearerFormat' => 'token',
                 ],
-                'sanctum' => [ // Unique name of security
-                    'type' => 'apiKey', // Valid values are "basic", "apiKey" or "oauth2".
-                    'description' => 'Enter token in format (Bearer <token>)',
-                    'name' => 'Authorization', // The name of the header or query parameter to be used.
-                    'in' => 'header', // The location of the API key. Valid values are "query" or "header".
-                ],
-                */
             ],
             'security' => [
                 /*
@@ -237,7 +221,7 @@ return [
          * Set this to `true` in development mode so that docs would be regenerated on each request
          * Set this to `false` to disable swagger generation on production
          */
-        'generate_always' => env('L5_SWAGGER_GENERATE_ALWAYS', false),
+        'generate_always' => env('L5_SWAGGER_GENERATE_ALWAYS', true),
 
         /*
          * Set this to `true` to generate a copy of documentation in yaml format
