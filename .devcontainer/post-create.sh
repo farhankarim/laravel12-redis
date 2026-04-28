@@ -3,6 +3,15 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
+refresh_yarn_keyring() {
+  if [ -f /etc/apt/sources.list.d/yarn.list ]; then
+    sudo install -d -m 0755 /usr/share/keyrings
+    curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | sudo tee /usr/share/keyrings/yarn-archive-keyring.gpg >/dev/null
+  fi
+}
+
+refresh_yarn_keyring
+
 if ! command -v mariadb >/dev/null 2>&1 && ! command -v mysql >/dev/null 2>&1; then
   sudo apt-get update
   sudo apt-get install -y mariadb-server mariadb-client

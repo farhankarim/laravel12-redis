@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('university');
 })->name('welcome');
 
 // SEO Routes - Sitemap and robots.txt
