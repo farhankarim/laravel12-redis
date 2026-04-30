@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -22,7 +23,23 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'profile_picture',
     ];
+
+    /**
+     * Returns the full public URL for the user's profile picture, or null when
+     * no picture has been uploaded.
+     */
+    public function profilePictureUrl(): ?string
+    {
+        if (! $this->profile_picture) {
+            return null;
+        }
+
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+
+        return Storage::disk($disk)->url($this->profile_picture);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

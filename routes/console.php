@@ -1,8 +1,11 @@
 <?php
 
+use App\Jobs\ExportStudentsCsvJob;
 use App\Services\RedisDashboardSummaryService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Str;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -26,3 +29,19 @@ Artisan::command('dashboard:redis-listen', function (RedisDashboardSummaryServic
 
     return 0;
 })->purpose('Listen to Redis pub/sub refresh requests and refresh dashboard summary keys');
+
+// -------------------------------------------------------------------------
+// Scheduled tasks
+// -------------------------------------------------------------------------
+
+// Generate a nightly full-student CSV report and store it on the filesystem.
+Schedule::call(function () {
+    ExportStudentsCsvJob::dispatch((string) Str::uuid())->onQueue('default');
+})->dailyAt('02:00')->name('nightly-student-csv-export')->withoutOverlapping();
+
+// Prune orphaned CSV export files older than 7 days from the exports directory.
+Schedule::command('storage:prune-stale-exports')
+    ->weekly()
+    ->name('prune-stale-csv-exports')
+    ->withoutOverlapping()
+    ->runInBackground();
