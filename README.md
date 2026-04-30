@@ -19,6 +19,10 @@ A full-featured Laravel 12 starter that demonstrates:
 - **Repository Pattern** with a shared `BaseRepository` for clean data-access abstraction
 - **CoreUI React SPA** served via **Vite** for the frontend
 - **University Management System** sample CRUD demonstrating 5-entity many-to-many relationships via intersection tables
+- **AWS S3 file storage** for profile pictures and CSV exports
+- **Background jobs & batch processing** — queued CSV exports, email verification, bulk user import
+- **Scheduled tasks** — nightly reports and weekly storage pruning
+- **GitHub Actions CI/CD** — PHPUnit + Laravel Pint (PHP 8.2 & 8.3 matrix)
 
 ---
 
@@ -35,6 +39,13 @@ A full-featured Laravel 12 starter that demonstrates:
 - [Environment Variables Reference](#environment-variables-reference)
 - [Running the Application](#running-the-application)
 - [Feature Docs](#feature-docs)
+- [File Storage & Profile Pictures](#file-storage--profile-pictures)
+- [Background Jobs, Batch Processing & Scheduled Tasks](#background-jobs-batch-processing--scheduled-tasks)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [API Security & Authentication](#api-security--authentication)
+- [Webhook Validation](#webhook-validation)
+- [Environment Variables & Secrets Management](#environment-variables--secrets-management)
+- [Credential Rotation & Access Control](#credential-rotation--access-control)
 
 ---
 
@@ -618,6 +629,14 @@ cp .env.example .env
 | `CACHE_STORE` | `redis` | Cache driver |
 | `MAIL_MAILER` | `log` | Mail driver (`log`, `smtp`, etc.) |
 | `TRUSTED_PROXIES` | `127.0.0.1` | Comma-separated proxy IPs, or `*` behind a load-balancer |
+| `FILESYSTEM_DISK` | `local` | `local` for dev, `s3` for production file storage |
+| `AWS_ACCESS_KEY_ID` | _(empty)_ | AWS access key (use IAM role in EC2 instead of static keys) |
+| `AWS_SECRET_ACCESS_KEY` | _(empty)_ | AWS secret key |
+| `AWS_DEFAULT_REGION` | `us-east-1` | S3 bucket region |
+| `AWS_BUCKET` | _(empty)_ | S3 bucket name |
+| `AWS_URL` | _(empty)_ | Optional custom CDN / CloudFront URL |
+| `AWS_ENDPOINT` | _(empty)_ | Override endpoint (e.g. MinIO for local S3 emulation) |
+| `AWS_USE_PATH_STYLE_ENDPOINT` | `false` | Set `true` for MinIO / path-style S3 |
 
 ---
 
@@ -666,6 +685,12 @@ sudo supervisorctl restart laravel-worker:*
 ---
 
 ## Feature Docs
+
+> **Additional guides:**
+> - [Livewire + Redis dashboard tutorial](docs/livewire-redis-dashboard-step-by-step.md)
+> - [SEO Optimization Guide](docs/SEO_OPTIMIZATION_GUIDE.md)
+> - [React SEO Guide](docs/REACT_SEO_GUIDE.md)
+> - [Security Reference](docs/security.md) — in-depth guide covering authentication, webhooks, secrets management, credential rotation, and more
 
 ## Codespaces: MySQL
 
@@ -1062,10 +1087,23 @@ php artisan migrate
 | POST | `/students/{id}/enroll` | Enroll in a course (`course_id`, `semester`) |
 | PATCH | `/students/{id}/grade` | Update grade (`course_id`, `grade`) |
 | GET | `/students/{id}/report` | 5-entity master report |
+| POST | `/reports/master` | Flexible report builder (choose columns, scope) |
+| POST | `/reports/students/export` | Queue a CSV export — returns `export_id` |
+| GET | `/reports/students/export/{exportId}` | Poll export status and get download URL |
 | GET/POST/PUT/DELETE | `/courses/{id}` | Full CRUD |
 | GET/POST/PUT/DELETE | `/instructors/{id}` | Full CRUD |
 | GET/POST/PUT/DELETE | `/classrooms/{id}` | Full CRUD |
 | GET/POST/PUT/DELETE | `/departments/{id}` | Full CRUD |
+
+### Profile Picture Endpoints (`/api/`)
+
+All three routes require a valid Sanctum token (`Authorization: Bearer <token>`).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/profile/avatar` | Return the current avatar URL (or `null`) |
+| POST | `/profile/avatar` | Upload/replace avatar — `avatar` field (image, max 2 MB) |
+| DELETE | `/profile/avatar` | Delete the avatar and clear the database field |
 
 ### Master Report (5-way join)
 
@@ -1192,7 +1230,548 @@ import WidgetsPage from './pages/WidgetsPage.jsx';
 
 ---
 
-## About Laravel
+## File Storage & Profile Pictures
+
+### Overview
+
+All file storage is abstracted through Laravel's `Storage` facade. Set `FILESYSTEM_DISK=s3` in your `.env` to use Amazon S3; leave it as `local` (or `public`) during development. The code automatically resolves the correct disk at runtime — no controller changes are required to switch environments.
+
+### How it works
+
+| Environment | Disk | Where files live |
+|---|---|---|
+| `local` / dev | `public` | `storage/app/public/avatars/` |
+| `production` | `s3` | `s3://<AWS_BUCKET>/avatars/` |
+
+Locally, run `php artisan storage:link` once to symlink `storage/app/public` into `public/storage` so browser URLs resolve correctly.
+
+### Profile picture API
+
+All three endpoints require a valid Sanctum Bearer token.
+
+```
+POST   /api/profile/avatar      Upload or replace avatar
+GET    /api/profile/avatar      Get current avatar URL
+DELETE /api/profile/avatar      Remove avatar
+```
+
+**Upload request (multipart/form-data):**
+
+```bash
+curl -X POST /api/profile/avatar \
+  -H "Authorization: Bearer <token>" \
+  -F "avatar=@/path/to/photo.jpg"
+```
+
+**Accepted types:** `jpeg`, `jpg`, `png`, `webp` — max **2 MB**.
+
+**Response:**
+
+```json
+{
+  "message": "Profile picture updated successfully.",
+  "url": "https://<bucket>.s3.amazonaws.com/avatars/uuid.jpg"
+}
+```
+
+When on S3 the URL is a publicly-readable object URL (the bucket/object must allow public reads, or you can switch to `temporaryUrl()` for presigned links). On the local `public` disk the URL is relative to your `APP_URL`.
+
+### S3 bucket setup (production)
+
+1. Create an S3 bucket and set the region in `AWS_DEFAULT_REGION`.
+2. Create an IAM user or role with the following minimum permissions:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "s3:PutObject",
+    "s3:GetObject",
+    "s3:DeleteObject",
+    "s3:ListBucket"
+  ],
+  "Resource": [
+    "arn:aws:s3:::<bucket>",
+    "arn:aws:s3:::<bucket>/*"
+  ]
+}
+```
+
+3. Set the credentials in your `.env` (or, preferably, attach the IAM role to your EC2 instance so no static keys are needed).
+
+### Local S3 emulation (MinIO)
+
+For offline development you can emulate S3 using [MinIO](https://min.io):
+
+```dotenv
+FILESYSTEM_DISK=s3
+AWS_ACCESS_KEY_ID=minioadmin
+AWS_SECRET_ACCESS_KEY=minioadmin
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=laravel
+AWS_ENDPOINT=http://localhost:9000
+AWS_USE_PATH_STYLE_ENDPOINT=true
+```
+
+---
+
+## Background Jobs, Batch Processing & Scheduled Tasks
+
+### Architecture
+
+```
+Dispatch ──► Redis queue ──► Queue worker / Horizon ──► Job::handle()
+```
+
+All jobs implement `ShouldQueue` and are dispatched to a named Redis queue. Workers are managed by **Supervisor** in production (see [Setup: AWS EC2](#setup-aws-ec2)) or `composer run dev` locally.
+
+### Available jobs
+
+| Job class | Queue | Purpose |
+|---|---|---|
+| `InsertUsersChunkJob` | `user-imports` | Bulk insert a chunk of generated users |
+| `SendEmailVerificationChunkJob` | `email-verifications` | Batch-send email verification notifications |
+| `GenerateStudentsChunkJob` | `default` | Bulk insert students with random enrolments |
+| `ExportStudentsCsvJob` | `default` | Generate a student master-report CSV and store it on disk |
+
+### CSV export workflow
+
+The export is fully async to avoid HTTP timeouts on large data sets:
+
+1. **Dispatch** — `POST /api/v1/reports/students/export`
+
+```bash
+curl -X POST /api/v1/reports/students/export \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"scope":"all"}'
+```
+
+Returns `{ "export_id": "<uuid>", "message": "CSV export queued." }` (HTTP 202).
+
+2. **Poll** — `GET /api/v1/reports/students/export/{exportId}`
+
+Returns `{ "url": "<presigned-S3-URL-or-local-path>" }` once the job has finished, or `404` while still processing.
+
+3. The job writes the CSV to `exports/students/students_<exportId>_<timestamp>.csv` and caches the path under the key `student_csv_export:<exportId>` for **24 hours**.
+
+### Scheduled tasks
+
+Registered in `routes/console.php`:
+
+| Schedule | Command / Closure | Description |
+|---|---|---|
+| Daily at 02:00 | `ExportStudentsCsvJob` dispatch | Generate a full student report CSV each night |
+| Weekly | `storage:prune-stale-exports` | Delete export files older than 7 days |
+
+To run the scheduler locally:
+
+```bash
+php artisan schedule:run
+# or continuously:
+php artisan schedule:work
+```
+
+In production, add a single cron entry:
+
+```cron
+* * * * * cd /var/www/laravel12-redis && php artisan schedule:run >> /dev/null 2>&1
+```
+
+### `storage:prune-stale-exports` command
+
+```bash
+php artisan storage:prune-stale-exports          # default: 7 days
+php artisan storage:prune-stale-exports --days=3 # custom retention window
+php artisan storage:prune-stale-exports --disk=s3 # force a specific disk
+```
+
+---
+
+## CI/CD Pipeline
+
+The repository ships with a GitHub Actions workflow at `.github/workflows/ci.yml`.
+
+### Jobs
+
+| Job | PHP matrix | What it does |
+|---|---|---|
+| `test` | 8.2, 8.3 | `composer install` → `php artisan test` (SQLite in-memory) |
+| `lint` | 8.3 | `vendor/bin/pint --test` (dry-run style check) |
+
+### Secrets used in CI
+
+No application secrets are needed for the test run — all sensitive values are overridden by environment variables declared directly in the workflow `env:` block using safe test values (`DB_CONNECTION: sqlite`, `QUEUE_CONNECTION: sync`, etc.).
+
+### Adding new secrets to CI
+
+1. Go to **Settings → Secrets and variables → Actions** in the GitHub repository.
+2. Click **New repository secret**.
+3. Reference the secret in the workflow:
+
+```yaml
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+
+> **Never** hard-code secrets in workflow YAML files or commit them to source control.
+
+### Extending the pipeline
+
+Add a `deploy` job that runs only on `main` after `test` passes:
+
+```yaml
+deploy:
+  needs: test
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  runs-on: ubuntu-latest
+  permissions:
+    contents: read
+  steps:
+    - uses: actions/checkout@v4
+    - name: Deploy via SSH
+      run: ssh deploy@<server> 'cd /var/www/laravel12-redis && git pull && composer install --no-dev && php artisan migrate --force && php artisan config:cache'
+```
+
+---
+
+## API Security & Authentication
+
+### Authentication flow
+
+This application uses **Laravel Sanctum** for stateless API token authentication (the primary flow for the REST API and SPA):
+
+```
+Client                                  Server
+  │ POST /api/auth/register  ────────►  Creates User, issues plaintext token
+  │ POST /api/auth/login     ────────►  Verifies credentials, issues token
+  │                          ◄────────  { user: {...}, token: "1|abc..." }
+  │ GET  /api/v1/students    ────────►  Sanctum reads Bearer token → auth:sanctum guard
+  │ POST /api/auth/logout    ────────►  Deletes current access token
+```
+
+All routes under `auth:sanctum` middleware require the header:
+
+```
+Authorization: Bearer <plaintext-token>
+```
+
+### Token best practices
+
+| Practice | Why |
+|---|---|
+| Store tokens in `httpOnly` cookies (SPA) or secure device storage (mobile) | Prevents XSS token theft |
+| Issue short-lived tokens and refresh them regularly | Limits the blast radius of a leak |
+| Use token abilities/scopes (`createToken('api', ['read'])`) | Principle of least privilege |
+| Revoke tokens on logout and password change | Prevents reuse after compromise |
+| Rotate the `APP_KEY` periodically and invalidate all signed URLs | Secrets decay over time |
+
+### Rate limiting
+
+Laravel's built-in rate limiter is configured in `bootstrap/app.php` via `Route::throttle`. To add a stricter limit on auth endpoints, add to `bootstrap/app.php`:
+
+```php
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
+
+RateLimiter::for('auth', function (Request $request) {
+    return Limit::perMinute(10)->by($request->ip());
+});
+```
+
+Then apply to auth routes in `routes/api.php`:
+
+```php
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('auth/register', ...);
+    Route::post('auth/login', ...);
+});
+```
+
+### CORS
+
+Configure allowed origins in `config/cors.php`. In production, restrict `allowed_origins` to your actual front-end domain rather than `['*']`:
+
+```php
+'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:5173')],
+```
+
+### HTTPS enforcement
+
+In production, always enforce HTTPS. Add to `app/Providers/AppServiceProvider.php`:
+
+```php
+if ($this->app->environment('production')) {
+    URL::forceScheme('https');
+}
+```
+
+And set `SESSION_SECURE_COOKIE=true` in `.env`.
+
+### Input validation
+
+All controllers validate every incoming request before touching the database — see `AuthController`, `StudentController`, `ProfileController`. Never trust user input. Use Laravel's `Rule::unique`, `Rule::in`, and `Rule::exists` helpers for relational constraints.
+
+### File upload security
+
+`ProfileController::uploadAvatar` enforces:
+- MIME type whitelist: `jpeg`, `jpg`, `png`, `webp`
+- Maximum size: **2 MB**
+- Laravel stores files using a random UUID filename — never the original user-supplied name
+
+---
+
+## Webhook Validation
+
+If you expose webhook endpoints (e.g., Stripe, GitHub, or custom integrations), always **validate the signature** before trusting the payload.
+
+### HMAC-SHA256 signature validation
+
+Add an `X-Signature-256` header to every outgoing webhook and validate it on receipt:
+
+```php
+// app/Http/Middleware/ValidateWebhookSignature.php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class ValidateWebhookSignature
+{
+    public function handle(Request $request, Closure $next, string $secretEnvKey = 'WEBHOOK_SECRET'): Response
+    {
+        $secret    = config("services.webhooks.{$secretEnvKey}");
+        $signature = $request->header('X-Signature-256', '');
+        $payload   = $request->getContent();
+
+        $expected  = 'sha256='.hash_hmac('sha256', $payload, $secret);
+
+        if (! hash_equals($expected, $signature)) {
+            abort(403, 'Invalid webhook signature.');
+        }
+
+        return $next($request);
+    }
+}
+```
+
+Register the middleware in `bootstrap/app.php`:
+
+```php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias(['webhook.sign' => \App\Http\Middleware\ValidateWebhookSignature::class]);
+})
+```
+
+Apply to webhook routes:
+
+```php
+Route::post('webhooks/stripe', StripeWebhookController::class)
+    ->middleware('webhook.sign:STRIPE_WEBHOOK_SECRET');
+```
+
+### Replay attack prevention
+
+A replay attack re-sends a previously captured valid webhook. Prevent it by including a **timestamp** in the signed payload and rejecting requests older than 5 minutes:
+
+```php
+$timestamp = (int) $request->header('X-Webhook-Timestamp', 0);
+
+if (abs(now()->timestamp - $timestamp) > 300) {
+    abort(403, 'Webhook timestamp is too old.');
+}
+
+$payload  = $timestamp.'.'.$request->getContent();
+$expected = 'sha256='.hash_hmac('sha256', $payload, $secret);
+```
+
+### Idempotency
+
+Track processed webhook IDs in the cache (or a `webhook_events` DB table) to make handlers idempotent:
+
+```php
+$eventId = $request->header('X-Webhook-Event-Id');
+
+if (cache()->has("webhook:processed:{$eventId}")) {
+    return response()->json(['status' => 'already processed']);
+}
+
+// ... process ...
+
+cache()->put("webhook:processed:{$eventId}", true, now()->addHours(24));
+```
+
+### Stripe webhook example
+
+```bash
+composer require stripe/stripe-php
+```
+
+```php
+$event = \Stripe\Webhook::constructEvent(
+    $request->getContent(),
+    $request->header('Stripe-Signature'),
+    config('services.stripe.webhook_secret'),
+);
+```
+
+---
+
+## Environment Variables & Secrets Management
+
+### The golden rules
+
+1. **Never commit secrets to source control.** The `.env` file is in `.gitignore` — keep it that way.
+2. **Never log secrets.** Disable the MySQL query log in production (`MYSQL_QUERY_LOG_ENABLED=false`) or ensure passwords never appear in SQL strings.
+3. **Use different credentials per environment** (local, staging, production).
+4. **Rotate secrets regularly** (see [Credential Rotation & Access Control](#credential-rotation--access-control)).
+
+### `.env` vs secrets managers
+
+| Approach | When to use |
+|---|---|
+| `.env` file | Local development only |
+| GitHub Actions Secrets | CI/CD pipelines |
+| AWS Secrets Manager / SSM Parameter Store | EC2 / ECS production workloads |
+| HashiCorp Vault | Multi-cloud or self-hosted secrets |
+| DigitalOcean App Platform env vars | DO-hosted deployments |
+
+For Laravel on EC2, the recommended approach is to pull secrets at deployment time:
+
+```bash
+# In your deploy script
+aws ssm get-parameter --name /laravel/production/DB_PASSWORD --with-decryption \
+  --query Parameter.Value --output text >> /var/www/laravel12-redis/.env
+```
+
+### Minimum production `.env` checklist
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false           # Never true in production
+APP_KEY=base64:...        # Must be set; 32 random bytes
+
+DB_PASSWORD=<strong-random-password>
+
+REDIS_PASSWORD=<strong-random-password>
+
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=lax
+
+MAIL_MAILER=smtp          # Not log
+MAIL_PASSWORD=<smtp-credential>
+
+# AWS (or use IAM role instead of static keys)
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+
+# Prevent stack traces leaking to clients
+APP_DEBUG=false
+```
+
+### Generating a new `APP_KEY`
+
+```bash
+php artisan key:generate   # writes to .env automatically
+```
+
+Invalidates all existing signed URLs and encrypted cookies — tell users to log in again.
+
+### Keeping `.env.example` up-to-date
+
+Every time you add a new variable to `.env`:
+1. Add a commented-out (or empty) version to `.env.example`.
+2. Document it in the [Environment Variables Reference](#environment-variables-reference) table.
+3. Update this checklist if it is required in production.
+
+---
+
+## Credential Rotation & Access Control
+
+### APP_KEY rotation
+
+1. Generate a new key: `php artisan key:generate --show` (prints without writing).
+2. Deploy the new key to **all** instances simultaneously.
+3. All signed URLs, encrypted cookies, and encrypted model attributes will be invalidated — plan for a maintenance window or use Laravel's key-history support (`APP_PREVIOUS_KEYS`).
+
+### Database password rotation
+
+1. Create the new password in MySQL first:
+
+```sql
+ALTER USER 'laravel'@'localhost' IDENTIFIED BY '<new-password>';
+FLUSH PRIVILEGES;
+```
+
+2. Update `.env` (or Secrets Manager) and re-run `php artisan config:cache`.
+3. Restart PHP-FPM so workers pick up the new credentials: `sudo systemctl reload php8.3-fpm`.
+
+### Redis password rotation
+
+1. Update `requirepass` in `redis.conf`.
+2. Reload Redis: `sudo systemctl reload redis-server`.
+3. Update `REDIS_PASSWORD` in `.env` and re-run `php artisan config:cache`.
+4. Restart queue workers so new connections use the updated password.
+
+### AWS / S3 credential rotation
+
+Prefer **IAM roles attached to EC2 instances** over long-lived static access keys — role credentials rotate automatically.
+
+If static keys must be used:
+
+1. Create a new access key in IAM Console.
+2. Update `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in your secrets manager.
+3. Deploy the new values and verify S3 access.
+4. Delete the old key in IAM Console.
+
+### Sanctum token rotation
+
+**Force-revoke all tokens** (e.g., after a suspected breach):
+
+```php
+// In a one-off Artisan command or tinker
+\Laravel\Sanctum\PersonalAccessToken::truncate();
+// All users will need to log in again.
+```
+
+**Per-user token revocation:**
+
+```php
+$user->tokens()->delete();
+```
+
+### Horizon access control
+
+The Horizon dashboard (`/horizon`) is gated in `App\Providers\HorizonServiceProvider`:
+
+```php
+protected function gate(): void
+{
+    Gate::define('viewHorizon', function ($user) {
+        return in_array($user->email, [
+            'admin@example.com',
+        ]);
+    });
+}
+```
+
+Restrict this list to administrators only and use email-verified accounts.
+
+### Principle of least privilege — IAM
+
+Give the application user only the permissions it needs:
+
+| Resource | Minimum permissions |
+|---|---|
+| S3 (app bucket) | `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` |
+| SES (email) | `ses:SendEmail`, `ses:SendRawEmail` |
+| SSM (secrets) | `ssm:GetParameter` on specific parameter paths |
+| CloudWatch Logs | `logs:CreateLogGroup`, `logs:PutLogEvents` |
+
+Never use an IAM user or role with `*` (wildcard) permissions in production.
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
