@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Observers\UserObserver;
+use App\Services\ElasticsearchUserSearchService;
+use Elastic\Elasticsearch\Client;
+use Elastic\Elasticsearch\ClientBuilder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +20,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(Client::class, function (): Client {
+            $hosts = config('elasticsearch.hosts', []);
+            if (! is_array($hosts) || $hosts === []) {
+                $hosts = ['http://127.0.0.1:9200'];
+            }
+
+            return ClientBuilder::create()
+                ->setHosts($hosts)
+                ->build();
+        });
+
+        $this->app->singleton(ElasticsearchUserSearchService::class, function ($app): ElasticsearchUserSearchService {
+            return new ElasticsearchUserSearchService($app->make(Client::class));
+        });
     }
 
     /**
@@ -23,6 +41,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        User::observe(UserObserver::class);
+
         // In GitHub Codespaces the user accesses the app through the Vite dev-server
         // at port 5173 (see vite.config.js). APP_URL is typically 'http://localhost'
         // in the .env, which causes Laravel's UrlGenerator to force that host for
