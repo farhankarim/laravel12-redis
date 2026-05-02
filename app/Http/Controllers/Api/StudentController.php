@@ -8,7 +8,6 @@ use App\Repositories\Contracts\StudentRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use OpenApi\Attributes as OA;
 
 class StudentController extends Controller
 {

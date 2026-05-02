@@ -39,7 +39,6 @@ A full-featured Laravel 12 starter that demonstrates:
 - [Environment Variables Reference](#environment-variables-reference)
 - [Running the Application](#running-the-application)
 - [Feature Docs](#feature-docs)
-  - [Swagger API Documentation](#swagger-api-documentation)
 - [File Storage & Profile Pictures](#file-storage--profile-pictures)
 - [Background Jobs, Batch Processing & Scheduled Tasks](#background-jobs-batch-processing--scheduled-tasks)
 - [CI/CD Pipeline](#cicd-pipeline)
@@ -691,49 +690,6 @@ sudo supervisorctl restart laravel-worker:*
 
 ## Feature Docs
 
-## Swagger API Documentation
-
-Interactive OpenAPI 3.0 documentation is generated automatically from annotations in the API controllers using [darkaonline/l5-swagger](https://github.com/DarkaOnLine/L5-Swagger).
-
-### Access
-
-| URL | Description |
-|---|---|
-| `/api/documentation` | Swagger UI (interactive browser) |
-| `/docs/api-docs.json` | Raw OpenAPI JSON spec |
-| `/docs/api-docs.yaml` | Raw OpenAPI YAML spec |
-
-### Authentication in Swagger UI
-
-1. Open `/api/documentation` in your browser.
-2. Call **POST /api/auth/login** with your credentials to receive a token.
-3. Click the **Authorize** button (🔒) at the top of the page.
-4. Paste the token value (without the `Bearer ` prefix) and click **Authorize**.
-5. All protected endpoints will now include the `Authorization: Bearer <token>` header automatically.
-
-### Regenerating docs
-
-```bash
-php artisan l5-swagger:generate
-```
-
-In development (`L5_SWAGGER_GENERATE_ALWAYS=true`) docs regenerate automatically on each request to the Swagger UI.
-
-Set `L5_SWAGGER_GENERATE_ALWAYS=false` in production to serve the cached JSON instead.
-
-### Documented API groups
-
-| Tag | Endpoints |
-|---|---|
-| **Auth** | Register, Login, Logout |
-| **Students** | CRUD, Enroll, Update grade, Master report |
-| **Courses** | CRUD, Assign/revoke students & instructors |
-| **Instructors** | CRUD |
-| **Classrooms** | CRUD |
-| **Departments** | CRUD |
-| **Users** | Search by name (Elasticsearch) |
-
----
 > **Additional guides:**
 > - [Livewire + Redis dashboard tutorial](docs/livewire-redis-dashboard-step-by-step.md)
 > - [SEO Optimization Guide](docs/SEO_OPTIMIZATION_GUIDE.md)
