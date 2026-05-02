@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ClassroomController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\InstructorController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\UserSearchController;
 use Illuminate\Support\Facades\Route;
@@ -15,12 +16,19 @@ Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
+    // Profile picture management
+    Route::get('profile/avatar', [ProfileController::class, 'showAvatar']);
+    Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar']);
+
     Route::prefix('v1')->group(function () {
         Route::apiResource('students', StudentController::class);
         Route::post('students/{student}/enroll', [StudentController::class, 'enroll']);
         Route::patch('students/{student}/grade', [StudentController::class, 'updateGrade']);
         Route::get('students/{student}/report', [StudentController::class, 'masterReport']);
         Route::post('reports/master', [StudentController::class, 'masterReportBuilder']);
+        Route::post('reports/students/export', [StudentController::class, 'exportCsv']);
+        Route::get('reports/students/export/{exportId}', [StudentController::class, 'csvDownloadUrl']);
 
         Route::apiResource('courses', CourseController::class);
         Route::get('courses/{course}/available-students', [CourseController::class, 'getAvailableStudents']);

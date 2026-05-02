@@ -1,10 +1,13 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ExportStudentsCsvJob;
 use App\Repositories\Contracts\StudentRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 
 class StudentController extends Controller
@@ -60,6 +63,7 @@ class StudentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate(['name' => 'required|string|max:255', 'email' => 'required|email|unique:students']);
+
         return response()->json($this->students->create($data), 201);
     }
 
@@ -77,6 +81,7 @@ class StudentController extends Controller
     public function show(int $id): JsonResponse
     {
         $student = $this->students->find($id, ['*'], ['courses.instructors.departments', 'courses.classrooms']);
+
         return $student ? response()->json($student) : response()->json(['message' => 'Not found'], 404);
     }
 
@@ -106,6 +111,7 @@ class StudentController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $data = $request->validate(['name' => 'sometimes|string|max:255', 'email' => 'sometimes|email|unique:students,email,'.$id]);
+
         return response()->json(['updated' => $this->students->update($id, $data)]);
     }
 
@@ -195,6 +201,7 @@ class StudentController extends Controller
     public function updateGrade(Request $request, int $id): JsonResponse
     {
         $data = $request->validate(['course_id' => 'required|integer|exists:courses,id', 'grade' => 'required|string|max:2']);
+
         return response()->json(['updated' => $this->students->updateGrade($id, $data['course_id'], $data['grade'])]);
     }
 
@@ -293,5 +300,53 @@ class StudentController extends Controller
             ],
             'rows' => $rows,
         ]);
+    }
+
+    /**
+     * Dispatch a background job to generate a students CSV export.
+     * Returns an export ID that the client can poll to retrieve the download URL.
+     */
+    public function exportCsv(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'scope' => 'required|in:all,student',
+            'student_id' => 'nullable|required_if:scope,student|integer|exists:students,id',
+        ]);
+
+        $scope = $data['scope'];
+        $studentId = $scope === 'student' ? (int) $data['student_id'] : null;
+        $exportId = (string) Str::uuid();
+
+        ExportStudentsCsvJob::dispatch($exportId, $studentId)
+            ->onQueue('default');
+
+        return response()->json([
+            'message' => 'CSV export queued.',
+            'export_id' => $exportId,
+        ], 202);
+    }
+
+    /**
+     * Return the temporary download URL for a completed CSV export.
+     */
+    public function csvDownloadUrl(Request $request, string $exportId): JsonResponse
+    {
+        $path = cache()->get(ExportStudentsCsvJob::CACHE_KEY_PREFIX.$exportId);
+
+        if (! $path) {
+            return response()->json(['message' => 'Export not ready or not found.'], 404);
+        }
+
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'local';
+
+        try {
+            $url = \Illuminate\Support\Facades\Storage::disk($disk)
+                ->temporaryUrl($path, now()->addMinutes(30));
+        } catch (\RuntimeException) {
+            // Local disk does not support temporary URLs — return the stored path.
+            $url = $path;
+        }
+
+        return response()->json(['url' => $url]);
     }
 }
